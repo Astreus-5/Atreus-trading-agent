@@ -1,0 +1,272 @@
+import crypto from "node:crypto";
+
+/**
+ * Represents 24-hour ticker statistics for a trading pair.
+ */
+export interface TickerData {
+  symbol: string;
+  price: string;
+  priceChangePercent: string;
+  highPrice: string;
+  lowPrice: string;
+  volume: string;
+}
+
+/**
+ * Represents the top bid and ask levels of an order book.
+ */
+export interface OrderBookData {
+  bids: [string, string][];
+  asks: [string, string][];
+}
+
+/**
+ * Represents perpetual contract funding rate and mark price metrics.
+ */
+export interface FundingRateData {
+  symbol: string;
+  markPrice: string;
+  indexPrice: string;
+  lastFundingRate: string;
+  nextFundingTime: number;
+}
+
+/**
+ * Unified Binance Client providing real-time market data access and authenticated order routing.
+ */
+export class BinanceClient {
+  private readonly apiKey: string;
+  private readonly apiSecret: string;
+  private readonly spotBaseUrl = "https://api.binance.com";
+  private readonly futuresBaseUrl = "https://fapi.binance.com";
+  private readonly coinFuturesBaseUrl = "https://dapi.binance.com";
+
+  /**
+   * Initializes the Binance Client.
+   * @param apiKey Optional Binance API Key for authenticated operations.
+   * @param apiSecret Optional Binance API Secret for authenticated operations.
+   */
+  constructor(apiKey = process.env.BINANCE_API_KEY ?? "", apiSecret = process.env.BINANCE_API_SECRET ?? "") {
+    this.apiKey = apiKey.trim();
+    this.apiSecret = apiSecret.trim();
+  }
+
+  /**
+   * Checks whether valid API credentials have been configured.
+   */
+  public hasKeys(): boolean {
+    return Boolean(this.apiKey && this.apiSecret);
+  }
+
+  /**
+   * Generates HMAC-SHA256 signature for Binance API requests.
+   */
+  private sign(queryString: string): string {
+    return crypto.createHmac("sha256", this.apiSecret).update(queryString).digest("hex");
+  }
+
+  // ── Public Market Intelligence (100% Real-Time Live Feeds) ──────────────────
+
+  /**
+   * Fetches the 24-hour ticker price change statistics for a Spot symbol.
+   * @param symbol Trading pair, e.g. "BTCUSDT".
+   */
+  async getSpotTicker(symbol: string): Promise<TickerData> {
+    const res = await fetch(`${this.spotBaseUrl}/api/v3/ticker/24hr?symbol=${symbol.toUpperCase()}`);
+    if (!res.ok) throw new Error(`Spot Ticker request failed (${res.status}): ${res.statusText}`);
+    const data: any = await res.json();
+    return {
+      symbol: data.symbol,
+      price: data.lastPrice,
+      priceChangePercent: data.priceChangePercent,
+      highPrice: data.highPrice,
+      lowPrice: data.lowPrice,
+      volume: data.volume,
+    };
+  }
+
+  /**
+   * Fetches the live order book depth for a Spot symbol.
+   * @param symbol Trading pair, e.g. "BTCUSDT".
+   * @param limit Number of price levels to return (default: 10).
+   */
+  async getSpotOrderBook(symbol: string, limit = 10): Promise<OrderBookData> {
+    const res = await fetch(`${this.spotBaseUrl}/api/v3/depth?symbol=${symbol.toUpperCase()}&limit=${limit}`);
+    if (!res.ok) throw new Error(`Order Book request failed (${res.status}): ${res.statusText}`);
+    const data: any = await res.json();
+    return {
+      bids: data.bids.slice(0, limit),
+      asks: data.asks.slice(0, limit),
+    };
+  }
+
+  /**
+   * Fetches historical candlestick (kline) bars for technical analysis.
+   * @param symbol Trading pair, e.g. "BTCUSDT".
+   * @param interval Candlestick timeframe (default: "1h").
+   * @param limit Number of historical bars to retrieve (default: 30).
+   */
+  async getKlines(symbol: string, interval = "1h", limit = 30): Promise<any[]> {
+    const res = await fetch(
+      `${this.spotBaseUrl}/api/v3/klines?symbol=${symbol.toUpperCase()}&interval=${interval}&limit=${limit}`
+    );
+    if (!res.ok) throw new Error(`Kline request failed (${res.status}): ${res.statusText}`);
+    const data: any = await res.json();
+    return data.map((k: any) => ({
+      openTime: k[0],
+      open: k[1],
+      high: k[2],
+      low: k[3],
+      close: k[4],
+      volume: k[5],
+      closeTime: k[6],
+    }));
+  }
+
+  /**
+   * Fetches real-time funding rate and mark price for USDS-M Perpetual contracts.
+   * @param symbol Futures pair, e.g. "BTCUSDT".
+   */
+  async getFuturesFundingRate(symbol: string): Promise<FundingRateData> {
+    const res = await fetch(`${this.futuresBaseUrl}/fapi/v1/premiumIndex?symbol=${symbol.toUpperCase()}`);
+    if (!res.ok) throw new Error(`Futures Funding request failed (${res.status}): ${res.statusText}`);
+    const data: any = await res.json();
+    return {
+      symbol: data.symbol,
+      markPrice: data.markPrice,
+      indexPrice: data.indexPrice,
+      lastFundingRate: (Number(data.lastFundingRate) * 100).toFixed(4) + "%",
+      nextFundingTime: data.nextFundingTime,
+    };
+  }
+
+  /**
+   * Fetches 24-hour ticker statistics for USDS-M Perpetual contracts.
+   * @param symbol Futures pair, e.g. "BTCUSDT".
+   */
+  async getFuturesTicker(symbol: string): Promise<TickerData> {
+    const res = await fetch(`${this.futuresBaseUrl}/fapi/v1/ticker/24hr?symbol=${symbol.toUpperCase()}`);
+    if (!res.ok) throw new Error(`Futures Ticker request failed (${res.status}): ${res.statusText}`);
+    const data: any = await res.json();
+    return {
+      symbol: data.symbol,
+      price: data.lastPrice,
+      priceChangePercent: data.priceChangePercent,
+      highPrice: data.highPrice,
+      lowPrice: data.lowPrice,
+      volume: data.volume,
+    };
+  }
+
+  /**
+   * Fetches funding rate and mark price for COIN-M Perpetual contracts.
+   * @param symbol COIN-M pair, e.g. "BTCUSD_PERP".
+   */
+  async getCoinFuturesFundingRate(symbol: string): Promise<any> {
+    const res = await fetch(`${this.coinFuturesBaseUrl}/dapi/v1/premiumIndex?symbol=${symbol.toUpperCase()}`);
+    if (!res.ok) throw new Error(`COIN-M Funding request failed (${res.status}): ${res.statusText}`);
+    const data: any = await res.json();
+    const item = Array.isArray(data) ? data[0] : data;
+    return {
+      symbol: item?.symbol ?? symbol,
+      markPrice: item?.markPrice ?? "0",
+      lastFundingRate: item?.lastFundingRate ? (Number(item.lastFundingRate) * 100).toFixed(4) + "%" : "N/A",
+    };
+  }
+
+  // ── Account & Execution (Dynamic Live or Sandbox Mode) ───────────────────────
+
+  /**
+   * Queries account balance information.
+   * Returns live wallet balances if API keys are configured, or sandbox status if unauthenticated.
+   */
+  async getAccountBalances(): Promise<any> {
+    if (!this.hasKeys()) {
+      return {
+        mode: "SANDBOX_SIMULATION (Zero API Keys Mode)",
+        status: "ACTIVE",
+        info: "Operating in zero-key evaluation mode. Trading budgets are managed dynamically per session or can be connected live with BINANCE_API_KEY.",
+      };
+    }
+
+    const timestamp = Date.now();
+    const query = `timestamp=${timestamp}`;
+    const signature = this.sign(query);
+
+    const res = await fetch(`${this.spotBaseUrl}/api/v3/account?${query}&signature=${signature}`, {
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Binance Account query failed: ${err}`);
+    }
+
+    const data: any = await res.json();
+    const nonZeroBalances = data.balances?.filter(
+      (b: any) => Number(b.free) > 0 || Number(b.locked) > 0
+    );
+
+    return {
+      mode: "LIVE_BINANCE_AUTHENTICATED",
+      accountType: data.accountType,
+      canTrade: data.canTrade,
+      balances: nonZeroBalances,
+    };
+  }
+
+  /**
+   * Executes a trade order on Binance (or simulates execution in Sandbox mode).
+   */
+  async executeOrder(params: {
+    product: "SPOT" | "USDS-M FUTURES" | "COIN-M FUTURES";
+    symbol: string;
+    side: "BUY" | "SELL";
+    orderType: "MARKET" | "LIMIT";
+    quantity: number;
+    price?: number;
+  }): Promise<any> {
+    if (!this.hasKeys()) {
+      const orderId = `AGNT-SIM-${Date.now()}`;
+      return {
+        mode: "SANDBOX_SIMULATION",
+        status: "FILLED",
+        orderId,
+        symbol: params.symbol,
+        side: params.side,
+        executedQuantity: params.quantity,
+        orderType: params.orderType,
+        timestamp: new Date().toISOString(),
+        message: `Order simulated in Agentic Sandbox mode with full pre-trade RiskGuard audit and human CONFIRM gate.`,
+      };
+    }
+
+    const timestamp = Date.now();
+    let query = `symbol=${params.symbol.toUpperCase()}&side=${params.side}&type=${params.orderType}&quantity=${params.quantity}&timestamp=${timestamp}`;
+    if (params.orderType === "LIMIT" && params.price) {
+      query += `&price=${params.price}&timeInForce=GTC`;
+    }
+    const signature = this.sign(query);
+
+    const res = await fetch(`${this.spotBaseUrl}/api/v3/order?${query}&signature=${signature}`, {
+      method: "POST",
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Binance Order submission failed: ${err}`);
+    }
+
+    const data: any = await res.json();
+    return {
+      mode: "LIVE_BINANCE_AUTHENTICATED",
+      status: data.status,
+      orderId: data.orderId,
+      symbol: data.symbol,
+      executedQty: data.executedQty,
+      cummulativeQuoteQty: data.cummulativeQuoteQty,
+      fills: data.fills,
+    };
+  }
+}
