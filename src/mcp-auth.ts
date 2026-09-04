@@ -40,10 +40,12 @@ export class BinanceMCPAuth {
   }
 
   public static getStoredToken(): string | null {
+    // 1. CI/automated use — set BINANCE_MCP_TOKEN env var explicitly
     if (process.env.BINANCE_MCP_TOKEN) {
       return process.env.BINANCE_MCP_TOKEN.trim();
     }
 
+    // 2. Saved after user's own first-time login via the browser flow
     if (fs.existsSync(this.TOKEN_FILE)) {
       try {
         const raw = fs.readFileSync(this.TOKEN_FILE, "utf-8");
@@ -54,19 +56,7 @@ export class BinanceMCPAuth {
       } catch {}
     }
 
-    const homeDir = process.env.HOME || "";
-    const systemTokenPath = path.join(homeDir, ".gemini/antigravity-cli/mcp_oauth_tokens.json");
-    if (fs.existsSync(systemTokenPath)) {
-      try {
-        const raw = fs.readFileSync(systemTokenPath, "utf-8");
-        const parsed = JSON.parse(raw);
-        const binanceEntry = parsed["https://agent.binance.com/mcp/agentic"];
-        if (binanceEntry?.token?.access_token) {
-          return binanceEntry.token.access_token;
-        }
-      } catch {}
-    }
-
+    // No token found — user must log in themselves
     return null;
   }
 
