@@ -177,8 +177,9 @@ export class BinanceClient {
   // ── Account & Execution (Dynamic Live or Sandbox Mode) ───────────────────────
 
   /**
-   * Queries account balance information.
-   * Returns live wallet balances if API keys are configured, or sandbox status if unauthenticated.
+    * Queries account balance information across Master and Sub-Accounts.
+   * Returns live wallet balances (Spot, Simple Earn, Futures, and Agentic Sub-Accounts)
+   * if API keys are configured, or sandbox status if unauthenticated.
    */
   async getAccountBalances(): Promise<any> {
     if (!this.hasKeys()) {
@@ -189,30 +190,115 @@ export class BinanceClient {
       };
     }
 
-    const timestamp = Date.now();
-    const query = `timestamp=${timestamp}`;
-    const signature = this.sign(query);
+    const result: any = {
+      mode: "LIVE_BINANCE_AUTHENTICATED",
+      timestamp: new Date().toISOString(),
+      masterSpotBalances: [],
+      masterFuturesBalances: [],
+      subAccounts: [],
+    };
 
-    const res = await fetch(`${this.spotBaseUrl}/api/v3/account?${query}&signature=${signature}`, {
-      headers: { "X-MBX-APIKEY": this.apiKey },
-    });
+    // 1. Master Spot & Simple Earn Balances
+    try {
+      const timestamp = Date.now();
+      const query = `timestamp=${timestamp}`;
+      const signature = this.sign(query);
+      const res = await fetch(`${this.spotBaseUrl}/api/v3/account?${query}&signature=${signature}`, {
+        headers: { "X-MBX-APIKEY": this.apiKey },
+      });
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Binance Account query failed: ${err}`);
+      if (res.ok) {
+        const data: any = await res.json();
+        result.accountType = data.accountType;
+        result.canTrade = data.canTrade;
+        result.masterSpotBalances = (data.balances || [])
+          .filter((b: any) => Number(b.free) > 0 || Number(b.locked) > 0)
+          .map((b: any) => {
+            const isEarn = b.asset.startsWith("LD") && b.asset.length > 2;
+            const realAsset = isEarn ? b.asset.slice(2) : b.asset;
+            return {
+              asset: realAsset,
+              rawSymbol: b.asset,
+              free: b.free,
+              locked: b.locked,
+              category: isEarn ? "Simple Earn (Flexible Savings)" : "Spot Available",
+            };
+          });
+      }
+    } catch (err: any) {
+      console.warn("Notice: Spot balance fetch skipped:", err.message);
     }
 
-    const data: any = await res.json();
-    const nonZeroBalances = data.balances?.filter(
-      (b: any) => Number(b.free) > 0 || Number(b.locked) > 0
-    );
+    // 2. Master USDS-M Futures Balances
+    try {
+      const timestamp = Date.now();
+      const query = `timestamp=${timestamp}`;
+      const signature = this.sign(query);
+      const res = await fetch(`${this.futuresBaseUrl}/fapi/v2/balance?${query}&signature=${signature}`, {
+        headers: { "X-MBX-APIKEY": this.apiKey },
+      });
 
-    return {
-      mode: "LIVE_BINANCE_AUTHENTICATED",
-      accountType: data.accountType,
-      canTrade: data.canTrade,
-      balances: nonZeroBalances,
-    };
+      if (res.ok) {
+        const data: any = await res.json();
+        if (Array.isArray(data)) {
+          result.masterFuturesBalances = data
+            .filter((b: any) => Number(b.balance) > 0)
+            .map((b: any) => ({
+              asset: b.asset,
+              walletBalance: b.balance,
+              availableBalance: b.availableBalance,
+            }));
+        }
+      }
+    } catch (err: any) {
+      // Non-blocking if futures account is not activated
+    }
+
+    // 3. Sub-Accounts & Agentic Sub-Account Inspection
+    try {
+      const timestamp = Date.now();
+      const query = `timestamp=${timestamp}`;
+      const signature = this.sign(query);
+      const res = await fetch(`${this.spotBaseUrl}/sapi/v1/sub-account/list?${query}&signature=${signature}`, {
+        headers: { "X-MBX-APIKEY": this.apiKey },
+      });
+
+      if (res.ok) {
+        const data: any = await res.json();
+        if (data.subAccounts && Array.isArray(data.subAccounts)) {
+          for (const sub of data.subAccounts) {
+            let subAssets: any[] = [];
+            try {
+              const qSub = `email=${encodeURIComponent(sub.email)}&timestamp=${Date.now()}`;
+              const sigSub = this.sign(qSub);
+              const rSub = await fetch(`${this.spotBaseUrl}/sapi/v3/sub-account/assets?${qSub}&signature=${sigSub}`, {
+                headers: { "X-MBX-APIKEY": this.apiKey },
+              });
+              if (rSub.ok) {
+                const dSub: any = await rSub.json();
+                subAssets = (dSub.balances || []).filter(
+                  (a: any) => Number(a.free) > 0 || Number(a.locked) > 0
+                );
+              }
+            } catch {
+              // Graceful if assets endpoint is restricted
+            }
+
+            result.subAccounts.push({
+              email: sub.email,
+              subUserId: sub.subUserId,
+              isAgenticSubAccount: sub.email.toLowerCase().includes("agentic"),
+              remark: sub.remark || "Agentic Autonomous Account",
+              balances: subAssets,
+            });
+          }
+        }
+      }
+    } catch (err: any) {
+      // Non-blocking if sub-account permissions are not granted on this key
+    }
+
+    return result;
   }
 
   /**

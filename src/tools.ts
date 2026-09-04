@@ -84,7 +84,7 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "get_account_balance",
-      description: "Inspects account balances and available capital (supports both simulated Agentic Sub-Account and live API key mode).",
+      description: "Inspects account balances and available capital across Master Spot, Simple Earn (Flexible Savings), Futures, and Binance Agent OS Agentic Sub-Accounts.",
       parameters: {
         type: "object",
         properties: {},
