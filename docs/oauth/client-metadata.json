@@ -2,7 +2,10 @@
   "client_name": "Atreus AI Trading Agent",
   "client_uri": "https://astreus-5.github.io/atreus-trading-agent",
   "redirect_uris": [
-    "https://astreus-5.github.io/atreus-trading-agent/oauth/callback"
+    "https://astreus-5.github.io/Atreus-trading-agent/oauth/callback",
+    "https://astreus-5.github.io/Atreus-trading-agent/oauth/callback.html",
+    "https://astreus-5.github.io/atreus-trading-agent/oauth/callback",
+    "https://astreus-5.github.io/atreus-trading-agent/oauth/callback.html"
   ],
   "grant_types": ["authorization_code"],
   "response_types": ["code"],

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atreus Trading Agent — Binance Authorization</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0b0e11;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #1a1d23;
+      border: 1px solid #f0b90b33;
+      border-radius: 16px;
+      padding: 40px 48px;
+      max-width: 560px;
+      width: 95%;
+      text-align: center;
+      box-shadow: 0 0 40px #f0b90b11;
+    }
+    .logo { font-size: 40px; margin-bottom: 12px; }
+    h1 { color: #f0b90b; font-size: 22px; margin-bottom: 8px; }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+    .code-label { color: #aaa; font-size: 13px; margin-bottom: 10px; }
+    .code-box {
+      background: #0b0e11;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      word-break: break-all;
+      color: #f0b90b;
+      margin-bottom: 20px;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .copy-btn {
+      background: #f0b90b;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 32px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    .copy-btn:hover { background: #ffd140; }
+    .copy-btn.copied { background: #2ecc71; color: #fff; }
+    .instructions {
+      margin-top: 28px;
+      background: #0b0e11;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: left;
+      font-size: 13px;
+      color: #888;
+      line-height: 1.7;
+    }
+    .instructions strong { color: #f0b90b; }
+    .no-code { color: #e74c3c; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🤖</div>
+    <h1>Atreus AI Trading Agent</h1>
+    <p class="subtitle">Binance Agent OS — Authorization Complete</p>
+
+    <p class="code-label">Your authorization code:</p>
+    <div class="code-box" id="codeBox">Loading...</div>
+
+    <button class="copy-btn" id="copyBtn" onclick="copyCode()">
+      [ Copy to Clipboard ]
+    </button>
+
+    <div class="instructions">
+      <strong>Next step:</strong> Go back to your terminal and paste this code when prompted:<br>
+      <code>Paste your authorization code here &gt;</code>
+    </div>
+  </div>
+
+  <script>
+    function getCode() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('code') || params.get('authorization_code') || null;
+    }
+
+    const code = getCode();
+    const codeBox = document.getElementById('codeBox');
+
+    if (code) {
+      codeBox.textContent = code;
+    } else {
+      codeBox.innerHTML = '<span class="no-code">No code found in URL. Please retry authorization.</span>';
+    }
+
+    function copyCode() {
+      if (!code) return;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = '[ Copy to Clipboard ]';
+          btn.classList.remove('copied');
+        }, 2500);
+      });
+    }
+  </script>
+</body>
+</html>
