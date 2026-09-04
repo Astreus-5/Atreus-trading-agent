@@ -1,3 +1,4 @@
+import "dotenv/config";
 import OpenAI from "openai";
 import { BinanceClient } from "./binance-client.js";
 import { TechnicalAnalysis } from "./indicators.js";
