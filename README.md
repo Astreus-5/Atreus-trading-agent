@@ -93,9 +93,7 @@ atreus-trading-agent/
   - `GOOGLE_API_KEY` (Gemini 1.5 Pro)
   - `OPENROUTER_API_KEY` (DeepSeek)
 
----
-
-### Step 1: Clone & Install Dependencies
+### Step 1: Clone & Install
 
 ```bash
 git clone https://github.com/Astreus-5/atreus-trading-agent.git
@@ -103,36 +101,43 @@ cd atreus-trading-agent
 npm install
 ```
 
+> ✅ Expected: You'll see packages installing. No errors. Takes ~30 seconds.
+
 ---
 
 ### Step 2: Configure Environment
+
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Add whichever LLM API Key you have to `.env`:
+Open `.env` in any text editor and add **just one** LLM API key — whichever you already have:
 
 ```dotenv
-# Configure any ONE of the following:
-ANTHROPIC_API_KEY=sk-ant-...
-# or
-OPENAI_API_KEY=sk-proj-...
-# or
-GOOGLE_API_KEY=AIzaSy...
-# or
-OPENROUTER_API_KEY=sk-or-v1-...
+# ─── PICK ONE LLM KEY — only one is required ───────────────────
 
-# Pre-Trade Risk Controls (Optional - defaults shown)
-MAX_POSITION_PCT=5         # Max 5% of balance per single trade
-MAX_LEVERAGE=5             # Max 5x leverage for futures
-STOP_LOSS_PCT=2            # Minimum 2% mandatory stop-loss distance
-DAILY_LOSS_LIMIT_PCT=10    # Max 10% daily drawdown circuit breaker
+ANTHROPIC_API_KEY=sk-ant-...        # Claude 3.5 Sonnet  → get at console.anthropic.com
+# OPENAI_API_KEY=sk-proj-...        # GPT-4o             → get at platform.openai.com
+# GOOGLE_API_KEY=AIzaSy...          # Gemini 1.5 Pro     → get at aistudio.google.com
+# OPENROUTER_API_KEY=sk-or-v1-...   # DeepSeek           → get at openrouter.ai/keys
 
-# Optional Live Trading Keys (Leave empty for Zero-Key Sandbox mode)
+# ─── RISK CONTROLS (optional — safe defaults pre-set) ───────────
+MAX_POSITION_PCT=5        # Max 5% of balance per trade
+MAX_LEVERAGE=5            # Max 5× leverage for futures
+STOP_LOSS_PCT=2           # Minimum 2% mandatory stop-loss
+DAILY_LOSS_LIMIT_PCT=10   # 10% daily drawdown circuit breaker
+
+# ─── BINANCE KEYS (optional — leave blank for sandbox mode) ─────
+# Without these, the agent runs in Zero-Key Sandbox mode (safe for judges)
+# With these, the agent can execute real trades on your Binance account
 BINANCE_API_KEY=
 BINANCE_API_SECRET=
 ```
+
+> ✅ **Zero-Key Sandbox Mode**: You do NOT need Binance API keys to run and evaluate this agent.
+> Leave `BINANCE_API_KEY` and `BINANCE_API_SECRET` blank — all market data is public and trade execution is simulated safely.
 
 ---
 
@@ -142,9 +147,51 @@ BINANCE_API_SECRET=
 npm start
 ```
 
+> ✅ Expected output:
+> ```
+> [LLM Provider] Auto-detected: ANTHROPIC (claude-3-5-sonnet-20241022)
+> [Market Data] Connected directly to official Binance real-time feeds ✓
+> [Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓
+> [Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓
+>
+> ✨ Binance AI Trading Agent is online and ready for instructions.
+> You >
+> ```
+
+The agent auto-detects your LLM key and shows which provider is active.
+
 ---
 
-### Step 4: Run Automated Tests
+### Step 4: Give the Agent Its First Prompt
+
+At the `You >` prompt, type any of these to see the agent in action:
+
+**🔎 Live Market Intelligence:**
+```
+Check live BTCUSDT price and funding rate
+```
+
+**📊 Technical Analysis:**
+```
+Analyze ETHUSDT RSI and momentum
+```
+
+**⚠️ Risk Rejection (watch RiskGuard block this):**
+```
+Propose a $5000 buy on BTCUSDT with a $3500 balance
+```
+
+**✅ Valid Trade Proposal (triggers CONFIRM gate):**
+```
+Propose a 2x long position on ETHUSDT with a 2% stop-loss
+```
+
+> 💡 For the trade proposal: the agent will show a visual authorization card.
+> Type `CONFIRM` to simulate execution, or press Enter to cancel — **no real money moves** in sandbox mode.
+
+---
+
+### Step 5: Run Automated Tests (Optional)
 
 ```bash
 npm test
