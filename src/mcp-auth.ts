@@ -16,8 +16,9 @@ export interface StoredToken {
 
 export class BinanceMCPAuth {
   private static readonly CLIENT_METADATA_URL =
-    "https://antigravity.google/oauth/client-metadata.json";
-  private static readonly REDIRECT_URI = "https://antigravity.google/oauth-callback";
+    "https://astreus-5.github.io/atreus-trading-agent/oauth/client-metadata.json";
+  private static readonly REDIRECT_URI =
+    "https://astreus-5.github.io/atreus-trading-agent/oauth/callback";
   private static readonly AUTH_ENDPOINT = "https://accounts.binance.com/agentic-oauth/authorize";
   private static readonly TOKEN_ENDPOINT = "https://accounts.binance.com/oauth-agentic/token";
   private static readonly TOKEN_FILE = path.resolve(process.cwd(), ".binance-token.json");
