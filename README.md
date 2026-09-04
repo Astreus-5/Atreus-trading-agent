@@ -55,7 +55,7 @@ An autonomous, institutional-grade AI Trading Agent built in **TypeScript** supp
 ## 📁 Project Structure
 
 ```
-binance-trading-agent/
+atreus-trading-agent/
 ├── package.json               # Node.js & TypeScript dependencies
 ├── tsconfig.json              # Strict ES2022 TypeScript settings
 ├── .env.example               # Universal environment configuration template

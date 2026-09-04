@@ -1,5 +1,5 @@
 {
-  "name": "binance-trading-agent",
+  "name": "atreus-trading-agent",
   "version": "1.0.0",
   "description": "AI Trading Agent for Binance Agent OS Mini Hackathon (Track A)",
   "main": "dist/index.js",
