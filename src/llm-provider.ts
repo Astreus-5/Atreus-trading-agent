@@ -49,12 +49,13 @@ export class MultiLLMAdapter {
         apiKey: process.env.OPENROUTER_API_KEY,
       });
       this.conversationHistory.push({ role: "system", content: systemPrompt });
-    } else if (process.env.GOOGLE_API_KEY) {
+    } else if (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY) {
+      const googleKey = process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY!;
       this.config = {
         provider: "google",
         modelName: process.env.GOOGLE_MODEL ?? "gemini-1.5-pro",
       };
-      this.googleClient = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+      this.googleClient = new GoogleGenerativeAI(googleKey);
       const geminiFunctions: any[] = agentTools.map((t: any) => ({
         name: t.function.name,
         description: t.function.description,
@@ -91,15 +92,56 @@ export class MultiLLMAdapter {
     }
   }
 
+  /**
+   * Resilient execution engine: automatically retries on 429 rate limits,
+   * temporary upstream server congestion, and transient network errors.
+   */
+  private async executeWithRetry<T>(
+    action: () => Promise<T>,
+    retries = 3,
+    delayMs = 2000
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        return await action();
+      } catch (err: any) {
+        const isRateLimit =
+          err?.status === 429 ||
+          err?.statusCode === 429 ||
+          err?.message?.includes("429") ||
+          err?.message?.includes("rate-limit") ||
+          err?.message?.includes("rate limit") ||
+          err?.message?.includes("Provider returned error") ||
+          err?.message?.includes("temporarily") ||
+          err?.message?.includes("overloaded");
+
+        if (isRateLimit && attempt < retries) {
+          const waitSec = (delayMs * attempt) / 1000;
+          console.log(
+            chalk.yellow(
+              `\n[Resilience Engine] Upstream provider is temporarily congested. Auto-retrying attempt ${attempt + 1}/${retries} in ${waitSec}s...`
+            )
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new Error(`Execution failed after ${retries} attempts`);
+  }
+
   private async chatOpenAI(userPrompt: string): Promise<string> {
     if (!this.openaiClient) throw new Error("OpenAI client uninitialized");
     this.conversationHistory.push({ role: "user", content: userPrompt });
 
-    let completion = await this.openaiClient.chat.completions.create({
-      model: this.config.modelName,
-      messages: this.conversationHistory,
-      tools: agentTools,
-    });
+    let completion = await this.executeWithRetry(() =>
+      this.openaiClient!.chat.completions.create({
+        model: this.config.modelName,
+        messages: this.conversationHistory,
+        tools: agentTools,
+      })
+    );
 
     if (!completion.choices || completion.choices.length === 0) {
       throw new Error("No response choices returned by LLM provider.");
@@ -125,11 +167,13 @@ export class MultiLLMAdapter {
         });
       }
 
-      completion = await this.openaiClient.chat.completions.create({
-        model: this.config.modelName,
-        messages: this.conversationHistory,
-        tools: agentTools,
-      });
+      completion = await this.executeWithRetry(() =>
+        this.openaiClient!.chat.completions.create({
+          model: this.config.modelName,
+          messages: this.conversationHistory,
+          tools: agentTools,
+        })
+      );
 
       if (!completion.choices || completion.choices.length === 0) {
         throw new Error("No response choices returned by LLM provider after tool execution.");
