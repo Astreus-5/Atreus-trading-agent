@@ -213,4 +213,4 @@ Order AGNT-SIM-1725458920124 FILLED @ $2,500.20
 
 ## ⚖️ Legal & Risk Disclaimer
 
-Distributed under the MIT License. See [RISK_DISCLAIMER.md](file:///home/atreus/binance-trading-agent/RISK_DISCLAIMER.md) for full risk details. Cryptocurrency trading involves substantial risk of loss.
+Distributed under the MIT License. See [RISK_DISCLAIMER.md](./RISK_DISCLAIMER.md) for full risk details. Cryptocurrency trading involves substantial risk of loss.
