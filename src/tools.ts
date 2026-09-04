@@ -113,6 +113,40 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "redeem_simple_earn",
+      description: "Redeems yield-bearing assets (e.g. USDT) from Binance Simple Earn (Flexible Savings) back to Master Spot Wallet so they can be traded or transferred.",
+      parameters: {
+        type: "object",
+        properties: {
+          asset: { type: "string", description: "Asset symbol, e.g. USDT" },
+          amount: { type: "number", description: "Amount to redeem" },
+        },
+        required: ["asset", "amount"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "transfer_to_subaccount",
+      description: "Transfers funds (e.g. USDT) from Master Spot Wallet directly to the Binance Agent OS Agentic Sub-Account.",
+      parameters: {
+        type: "object",
+        properties: {
+          asset: { type: "string", description: "Asset symbol to transfer, e.g. USDT" },
+          amount: { type: "number", description: "Amount to transfer" },
+          subAccountEmail: {
+            type: "string",
+            description: "Optional recipient sub-account email. Defaults to auto-discovered agentic sub-account.",
+          },
+        },
+        required: ["asset", "amount"],
+      },
+    },
+  },
 ];
 
 export async function executeAgentTool(
@@ -202,6 +236,12 @@ export async function executeAgentTool(
         price: proposal.price,
       });
     }
+
+    case "redeem_simple_earn":
+      return await client.redeemFlexibleEarn(args.asset, args.amount);
+
+    case "transfer_to_subaccount":
+      return await client.transferToSubAccount(args.asset, args.amount, args.subAccountEmail);
 
     default:
       return { error: `Unknown tool: ${name}` };

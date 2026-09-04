@@ -347,4 +347,116 @@ export class BinanceClient {
       fills: data.fills,
     };
   }
+
+  /**
+   * Redeems yield-bearing assets from Simple Earn (Flexible Savings) to Spot Wallet.
+   */
+  async redeemFlexibleEarn(asset: string, amount: number): Promise<any> {
+    if (!this.hasKeys()) {
+      return {
+        status: "AUTHENTICATION_REQUIRED",
+        message: "Binance API keys required in .env for Simple Earn redemption.",
+      };
+    }
+
+    const posQuery = `asset=${asset.toUpperCase()}&timestamp=${Date.now()}`;
+    const posSig = this.sign(posQuery);
+    const posRes = await fetch(
+      `${this.spotBaseUrl}/sapi/v1/simple-earn/flexible/position?${posQuery}&signature=${posSig}`,
+      { headers: { "X-MBX-APIKEY": this.apiKey } }
+    );
+
+    if (!posRes.ok) {
+      const err = await posRes.text();
+      throw new Error(`Failed to query Simple Earn position for ${asset}: ${err}`);
+    }
+
+    const posData: any = await posRes.json();
+    const row = posData.rows?.find((r: any) => r.asset.toUpperCase() === asset.toUpperCase());
+    if (!row || !row.productId) {
+      throw new Error(`No active Simple Earn flexible position found for asset ${asset}.`);
+    }
+
+    const query = `productId=${row.productId}&amount=${amount}&type=FAST&timestamp=${Date.now()}`;
+    const signature = this.sign(query);
+    const res = await fetch(
+      `${this.spotBaseUrl}/sapi/v1/simple-earn/flexible/redeem?${query}&signature=${signature}`,
+      {
+        method: "POST",
+        headers: { "X-MBX-APIKEY": this.apiKey },
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Simple Earn redemption failed: ${err}`);
+    }
+
+    const data: any = await res.json();
+    return {
+      status: "SUCCESS",
+      action: "REDEEM_FLEXIBLE_EARN",
+      asset: asset.toUpperCase(),
+      amount,
+      redeemId: data.redeemId,
+      success: data.success,
+    };
+  }
+
+  /**
+   * Transfers assets from Master Spot Wallet to a designated Agentic Sub-Account.
+   */
+  async transferToSubAccount(asset: string, amount: number, subAccountEmail?: string): Promise<any> {
+    if (!this.hasKeys()) {
+      return {
+        status: "AUTHENTICATION_REQUIRED",
+        message: "Binance API keys required in .env for Sub-Account transfers.",
+      };
+    }
+
+    let targetEmail = subAccountEmail;
+    if (!targetEmail) {
+      const q = `timestamp=${Date.now()}`;
+      const sig = this.sign(q);
+      const res = await fetch(`${this.spotBaseUrl}/sapi/v1/sub-account/list?${q}&signature=${sig}`, {
+        headers: { "X-MBX-APIKEY": this.apiKey },
+      });
+      if (res.ok) {
+        const d: any = await res.json();
+        const agentic = d.subAccounts?.find((s: any) => s.email.toLowerCase().includes("agentic"));
+        if (agentic) targetEmail = agentic.email;
+      }
+    }
+
+    if (!targetEmail) {
+      throw new Error("No Agentic sub-account found to transfer funds to.");
+    }
+
+    const query = `toEmail=${encodeURIComponent(
+      targetEmail
+    )}&fromAccountType=SPOT&toAccountType=SPOT&asset=${asset.toUpperCase()}&amount=${amount}&timestamp=${Date.now()}`;
+    const signature = this.sign(query);
+    const res = await fetch(
+      `${this.spotBaseUrl}/sapi/v1/sub-account/universalTransfer?${query}&signature=${signature}`,
+      {
+        method: "POST",
+        headers: { "X-MBX-APIKEY": this.apiKey },
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Sub-Account transfer failed: ${err}`);
+    }
+
+    const data: any = await res.json();
+    return {
+      status: "SUCCESS",
+      action: "SUB_ACCOUNT_TRANSFER",
+      asset: asset.toUpperCase(),
+      amount,
+      targetSubAccount: targetEmail,
+      transferId: data.tranId,
+    };
+  }
 }
