@@ -98,8 +98,8 @@ atreus-trading-agent/
 ### Step 1: Clone & Install Dependencies
 
 ```bash
-git clone https://github.com/your-username/binance-trading-agent.git
-cd binance-trading-agent
+git clone https://github.com/Astreus-5/atreus-trading-agent.git
+cd atreus-trading-agent
 npm install
 ```
 
