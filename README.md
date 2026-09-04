@@ -143,10 +143,14 @@ BINANCE_API_SECRET=your_binance_api_secret
 npm start
 ```
 
+> 🔗 **First-Time Judge / User Connection (Official Binance MCP Flow)**:
+> On first run, the agent presents an official Binance authorization link. Simply log in to Binance, choose your **Agentic Sub-Account**, click **Authorize**, and paste the code from the callback page into the terminal. The token is securely stored in `.binance-token.json` for instant subsequent boots.
+
 > ✅ Expected output:
 > ```
+> [Binance MCP Engine] Connected to official Binance Agent OS Server ✓
+> [Binance MCP Engine] 81 dynamic official tools loaded (Spot • Futures • Wallet • Sub-Accounts) ✓
 > [LLM Provider] Auto-detected: OPENROUTER (deepseek/deepseek-chat)
-> [Binance Engine] Live Production Authenticated (Spot • Futures • Sub-Accounts) ✓
 > [Market Data] Connected directly to official Binance real-time feeds ✓
 > [Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓
 > [Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓
@@ -155,7 +159,7 @@ npm start
 > You >
 > ```
 
-The agent auto-detects your LLM key and validates your Binance live production connection.
+The agent dynamically retrieves all 81 official Binance Agent OS tools via MCP JSON-RPC 2.0.
 
 ---
 

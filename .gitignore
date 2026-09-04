@@ -12,6 +12,8 @@ build/
 # MCP session token cache
 .mcp/
 token.json
+.binance-token.json
+*.token.json
 
 # Logs & System
 npm-debug.log*

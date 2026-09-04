@@ -7,14 +7,17 @@ import { RiskGuard } from "./risk.js";
 import { getSystemPrompt } from "./prompt.js";
 import { MultiLLMAdapter } from "./llm-provider.js";
 
+import { BinanceMCPAuth } from "./mcp-auth.js";
+import { BinanceMCPClient } from "./mcp-client.js";
+
 async function main() {
   console.clear();
   console.log(
     boxen(
       `${chalk.bold.yellow("BINANCE AGENT OS — AI TRADING AGENT")}\n` +
         `${chalk.cyan("Track A Submission: Autonomous AI Trading Agent")}\n\n` +
-        `${chalk.green("Universal LLM Engine (Claude • GPT-4o • Gemini • DeepSeek)")}\n` +
-        `${chalk.dim("Multi-Market Intelligence • RiskGuard Engine • Human-in-the-Loop Safe")}`,
+        `${chalk.green("Official Model Context Protocol (MCP) • Universal LLM Engine")}\n` +
+        `${chalk.dim("81 Dynamic Official Tools • RiskGuard Engine • Human-in-the-Loop Safe")}`,
       {
         padding: 1,
         margin: { top: 1, bottom: 1 },
@@ -28,9 +31,27 @@ async function main() {
   const riskGuard = new RiskGuard();
   const systemPrompt = getSystemPrompt(riskGuard.getConfig());
 
+  // ── Official Binance Agent OS MCP Connection ─────────────────────────────────
+  let mcpClient: BinanceMCPClient | undefined;
+  try {
+    const token = await BinanceMCPAuth.authenticate();
+    if (token) {
+      mcpClient = new BinanceMCPClient(token);
+      const tools = await mcpClient.init();
+      console.log(chalk.green("[Binance MCP Engine] Connected to official Binance Agent OS Server ✓"));
+      console.log(
+        chalk.green(
+          `[Binance MCP Engine] ${tools.length} dynamic official tools loaded (Spot • Futures • Wallet • Sub-Accounts) ✓`
+        )
+      );
+    }
+  } catch (err: any) {
+    console.warn(chalk.yellow(`[Notice] MCP initialization skipped: ${err.message}`));
+  }
+
   let llmAdapter: MultiLLMAdapter;
   try {
-    llmAdapter = new MultiLLMAdapter(systemPrompt, riskGuard);
+    llmAdapter = new MultiLLMAdapter(systemPrompt, riskGuard, mcpClient);
   } catch (err: any) {
     console.error(chalk.bold.red(`\n❌ Configuration Error: ${err.message}\n`));
     process.exit(1);
@@ -44,13 +65,6 @@ async function main() {
       )}`
     )
   );
-
-  const hasBinanceKeys = Boolean(process.env.BINANCE_API_KEY && process.env.BINANCE_API_SECRET);
-  if (hasBinanceKeys) {
-    console.log(chalk.green("[Binance Engine] Live Production Authenticated (Spot • Futures • Sub-Accounts) ✓"));
-  } else {
-    console.log(chalk.cyan("[Binance Engine] Public Market Intelligence Mode (Live feeds & technicals active; API keys required for live trading)"));
-  }
 
   console.log(chalk.green("[Market Data] Connected directly to official Binance real-time feeds ✓"));
   console.log(chalk.green("[Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓"));

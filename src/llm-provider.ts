@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Anthropic from "@anthropic-ai/sdk";
 import { agentTools, executeAgentTool } from "./tools.js";
+import { BinanceMCPClient } from "./mcp-client.js";
 import { RiskGuard } from "./risk.js";
 import chalk from "chalk";
 
@@ -18,12 +19,14 @@ export class MultiLLMAdapter {
   private geminiChat: any = null;
   private systemPrompt: string;
   private riskGuard: RiskGuard;
+  private mcpClient?: BinanceMCPClient;
   private conversationHistory: OpenAI.ChatCompletionMessageParam[] = [];
   private anthropicMessages: Anthropic.MessageParam[] = [];
 
-  constructor(systemPrompt: string, riskGuard: RiskGuard) {
+  constructor(systemPrompt: string, riskGuard: RiskGuard, mcpClient?: BinanceMCPClient) {
     this.systemPrompt = systemPrompt;
     this.riskGuard = riskGuard;
+    this.mcpClient = mcpClient;
 
     // Detect available keys with clear precedence
     if (process.env.ANTHROPIC_API_KEY) {
@@ -56,7 +59,7 @@ export class MultiLLMAdapter {
         modelName: process.env.GOOGLE_MODEL ?? "gemini-1.5-pro",
       };
       this.googleClient = new GoogleGenerativeAI(googleKey);
-      const geminiFunctions: any[] = agentTools.map((t: any) => ({
+      const geminiFunctions: any[] = this.getActiveTools().map((t: any) => ({
         name: t.function.name,
         description: t.function.description,
         parameters: t.function.parameters,
@@ -72,6 +75,13 @@ export class MultiLLMAdapter {
         "No LLM API key detected. Please configure one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, or OPENROUTER_API_KEY in your .env file."
       );
     }
+  }
+
+  public getActiveTools(): OpenAI.ChatCompletionTool[] {
+    if (this.mcpClient) {
+      return this.mcpClient.toLLMTools();
+    }
+    return agentTools;
   }
 
   public getConfig(): LLMConfig {
@@ -135,11 +145,13 @@ export class MultiLLMAdapter {
     if (!this.openaiClient) throw new Error("OpenAI client uninitialized");
     this.conversationHistory.push({ role: "user", content: userPrompt });
 
+    const tools = this.getActiveTools();
+
     let completion = await this.executeWithRetry(() =>
       this.openaiClient!.chat.completions.create({
         model: this.config.modelName,
         messages: this.conversationHistory,
-        tools: agentTools,
+        tools,
       })
     );
 
@@ -158,7 +170,9 @@ export class MultiLLMAdapter {
         const fnArgs = JSON.parse(toolCall.function.arguments || "{}");
 
         console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(fnName)} with ${JSON.stringify(fnArgs)}`));
-        const toolResult = await executeAgentTool(fnName, fnArgs, this.riskGuard);
+        const toolResult = this.mcpClient
+          ? await this.mcpClient.executeTool(fnName, fnArgs, this.riskGuard)
+          : await executeAgentTool(fnName, fnArgs, this.riskGuard);
 
         this.conversationHistory.push({
           role: "tool",
@@ -171,7 +185,7 @@ export class MultiLLMAdapter {
         this.openaiClient!.chat.completions.create({
           model: this.config.modelName,
           messages: this.conversationHistory,
-          tools: agentTools,
+          tools,
         })
       );
 
@@ -200,7 +214,9 @@ export class MultiLLMAdapter {
 
       for (const call of calls) {
         console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(call.name)} with ${JSON.stringify(call.args)}`));
-        const toolResult = await executeAgentTool(call.name, call.args, this.riskGuard);
+        const toolResult = this.mcpClient
+          ? await this.mcpClient.executeTool(call.name, call.args, this.riskGuard)
+          : await executeAgentTool(call.name, call.args, this.riskGuard);
 
         functionResponses.push({
           functionResponse: {
@@ -221,7 +237,7 @@ export class MultiLLMAdapter {
     if (!this.anthropicClient) throw new Error("Anthropic client uninitialized");
     this.anthropicMessages.push({ role: "user", content: userPrompt });
 
-    const anthropicTools: Anthropic.Tool[] = agentTools.map((t: any) => ({
+    const anthropicTools: Anthropic.Tool[] = this.getActiveTools().map((t: any) => ({
       name: t.function.name,
       description: t.function.description,
       input_schema: t.function.parameters,
@@ -247,7 +263,9 @@ export class MultiLLMAdapter {
 
       for (const toolUse of toolUseBlocks) {
         console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(toolUse.name)} with ${JSON.stringify(toolUse.input)}`));
-        const toolOutput = await executeAgentTool(toolUse.name, toolUse.input, this.riskGuard);
+        const toolOutput = this.mcpClient
+          ? await this.mcpClient.executeTool(toolUse.name, toolUse.input, this.riskGuard)
+          : await executeAgentTool(toolUse.name, toolUse.input, this.riskGuard);
 
         toolResults.push({
           type: "tool_result",
