@@ -31,7 +31,7 @@ This document illustrates the expected multi-step reasoning, market analysis, ri
 • **Bullish Momentum:** BTC is sustaining strong price action above short-term moving averages.
 • **Neutral Funding:** +0.0060% funding rate indicates disciplined long positioning without leverage overheating.
 • **Order Book Structure:** Strong bid liquidity around $80,500 provides near-term support.
-• **Account Balance:** Sandbox Simulation Mode active (or Live Account if configured).
+• **Account Status:** Live Binance Authenticated (Spot, Simple Earn, and Agentic Sub-Account active).
 
 *Past performance does not guarantee future results. Cryptocurrency trading involves substantial risk of loss.*
 ```
@@ -90,7 +90,7 @@ CONFIRM
 
 ### ✅ Order Execution Report
 • **Status:** FILLED
-• **Order ID:** AGNT-SIM-1725458920124
+• **Order ID:** 8910248102
 • **Symbol:** BTCUSDT
 • **Side:** BUY (LONG)
 • **Executed Quantity:** 0.002 BTC

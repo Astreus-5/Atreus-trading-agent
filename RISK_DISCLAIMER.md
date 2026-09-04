@@ -22,4 +22,4 @@ To protect capital and mitigate algorithmic risks, this trading agent enforces s
 - **Mandatory Pre-Trade Risk Checks (`RiskGuard`):** Strict position sizing caps (maximum 5% of portfolio equity), maximum leverage boundaries (5× ceiling), mandatory stop-loss distance verification, and daily drawdown circuit breakers.
 - **Human-in-the-Loop Confirmation Gate:** The artificial intelligence agent cannot unilaterally broadcast or execute trades. Every order proposal renders an explicit terminal review card requiring the human operator to manually inspect parameters and type **`CONFIRM`** to proceed.
 
-**You are solely responsible for all trading decisions, order authorizations, and capital management.** Always test using the zero-key simulation sandbox before deploying real capital.
+**You are solely responsible for all trading decisions, order authorizations, and capital management.** Always begin with minimal position sizing and verify risk configurations before scaling live capital.

@@ -38,14 +38,14 @@ An autonomous, institutional-grade AI Trading Agent built in **TypeScript** supp
                                                                                     │ CONFIRM
                                                                                     ▼
                                                                   ┌──────────────────────────────────┐
-                                                                  │ Sandbox Simulation / Live Order  │
-                                                                  │ (Zero-Key Safe or Live API Key)  │
+                                                                  │   Live Binance Order Execution   │
+                                                                  │   (Spot Matching Engine API)     │
                                                                   └──────────────────────────────────┘
 ```
 
-1. **Universal Multi-LLM Engine**: Judges can run the agent with **ANY** API key they prefer (**Anthropic Claude**, **OpenAI GPT-4o**, **Google Gemini**, or **OpenRouter DeepSeek**). The engine auto-detects whichever key is provided.
+1. **Universal Multi-LLM Engine**: Runs with **ANY** configured LLM API key (**Anthropic Claude**, **OpenAI GPT-4o**, **Google Gemini**, or **OpenRouter DeepSeek**). The engine auto-detects whichever key is provided.
 2. **Native TypeScript Architecture**: Built on Node.js 20+ and TypeScript ES2022 with zero legacy dependencies for optimal speed and strict type safety.
-3. **Zero-Key Public Market Data**: Instantly pulls real-time Spot prices, 24h stats, USDS-M funding rates, mark prices, and order book depth with **zero Binance keys required**.
+3. **Multi-Market Intelligence & Account Engine**: Instantly pulls real-time Spot prices, 24h stats, USDS-M funding rates, mark prices, order book depth, and audits balances across Master Spot, Simple Earn, and Binance Agent OS Sub-Accounts.
 4. **Quantitative Technical Indicator Engine**: Computes live **RSI (14)**, **SMA (7)**, and **SMA (25)** directly from Binance candlestick bars to assess overbought/oversold regimes.
 5. **Pre-Trade RiskGuard Engine**: Audits every single trade proposal against strict risk invariants before human review.
 6. **Human-in-the-Loop Safeguard**: The AI cannot unilaterally place orders. Every trade triggers a visual terminal card requiring the operator to explicitly type `CONFIRM`.
@@ -129,15 +129,11 @@ MAX_LEVERAGE=5            # Max 5× leverage for futures
 STOP_LOSS_PCT=2           # Minimum 2% mandatory stop-loss
 DAILY_LOSS_LIMIT_PCT=10   # 10% daily drawdown circuit breaker
 
-# ─── BINANCE KEYS (optional — leave blank for sandbox mode) ─────
-# Without these, the agent runs in Zero-Key Sandbox mode (safe for judges)
-# With these, the agent can execute real trades on your Binance account
-BINANCE_API_KEY=
-BINANCE_API_SECRET=
+# ─── BINANCE LIVE API CREDENTIALS (Required) ───────────────────
+# Connects the agent directly to Binance live market and order execution engines
+BINANCE_API_KEY=your_binance_api_key
+BINANCE_API_SECRET=your_binance_api_secret
 ```
-
-> ✅ **Zero-Key Sandbox Mode**: You do NOT need Binance API keys to run and evaluate this agent.
-> Leave `BINANCE_API_KEY` and `BINANCE_API_SECRET` blank — all market data is public and trade execution is simulated safely.
 
 ---
 
@@ -149,7 +145,8 @@ npm start
 
 > ✅ Expected output:
 > ```
-> [LLM Provider] Auto-detected: ANTHROPIC (claude-3-5-sonnet-20241022)
+> [LLM Provider] Auto-detected: OPENROUTER (deepseek/deepseek-chat)
+> [Binance Engine] Live Production Authenticated (Spot • Futures • Sub-Accounts) ✓
 > [Market Data] Connected directly to official Binance real-time feeds ✓
 > [Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓
 > [Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓
@@ -158,7 +155,7 @@ npm start
 > You >
 > ```
 
-The agent auto-detects your LLM key and shows which provider is active.
+The agent auto-detects your LLM key and validates your Binance live production connection.
 
 ---
 
@@ -187,7 +184,7 @@ Propose a 2x long position on ETHUSDT with a 2% stop-loss
 ```
 
 > 💡 For the trade proposal: the agent will show a visual authorization card.
-> Type `CONFIRM` to simulate execution, or press Enter to cancel — **no real money moves** in sandbox mode.
+> Type `CONFIRM` to submit the live order to Binance, or press Enter to cancel.
 
 ---
 
@@ -252,8 +249,8 @@ Position size $2,000.00 exceeds allowed limit of $175.00 (5.0% of $3,500.00 bala
 ╚══════════════════════════════════════════════════════════════╝
 Your Decision > CONFIRM
 
-✓ Execution confirmed by operator. Submitting order to Binance sandbox...
-Order AGNT-SIM-1725458920124 FILLED @ $2,500.20
+✓ Execution confirmed by operator. Submitting order to Binance...
+Order #789210381 FILLED @ $2,500.20
 ```
 
 ---

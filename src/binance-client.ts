@@ -174,20 +174,17 @@ export class BinanceClient {
     };
   }
 
-  // ── Account & Execution (Dynamic Live or Sandbox Mode) ───────────────────────
+  // ── Account & Execution (100% Live Production Mode) ─────────────────────────
 
   /**
-    * Queries account balance information across Master and Sub-Accounts.
-   * Returns live wallet balances (Spot, Simple Earn, Futures, and Agentic Sub-Accounts)
-   * if API keys are configured, or sandbox status if unauthenticated.
+   * Queries account balance information across Master and Sub-Accounts.
+   * Returns live wallet balances (Spot, Simple Earn, Futures, and Agentic Sub-Accounts).
    */
   async getAccountBalances(): Promise<any> {
     if (!this.hasKeys()) {
-      return {
-        mode: "SANDBOX_SIMULATION (Zero API Keys Mode)",
-        status: "ACTIVE",
-        info: "Operating in zero-key evaluation mode. Trading budgets are managed dynamically per session or can be connected live with BINANCE_API_KEY.",
-      };
+      throw new Error(
+        "Binance API credentials missing. Please configure BINANCE_API_KEY and BINANCE_API_SECRET in your .env file."
+      );
     }
 
     const result: any = {
@@ -302,7 +299,7 @@ export class BinanceClient {
   }
 
   /**
-   * Executes a trade order on Binance (or simulates execution in Sandbox mode).
+   * Executes a live signed trade order on Binance Spot.
    */
   async executeOrder(params: {
     product: "SPOT" | "USDS-M FUTURES" | "COIN-M FUTURES";
@@ -313,18 +310,9 @@ export class BinanceClient {
     price?: number;
   }): Promise<any> {
     if (!this.hasKeys()) {
-      const orderId = `AGNT-SIM-${Date.now()}`;
-      return {
-        mode: "SANDBOX_SIMULATION",
-        status: "FILLED",
-        orderId,
-        symbol: params.symbol,
-        side: params.side,
-        executedQuantity: params.quantity,
-        orderType: params.orderType,
-        timestamp: new Date().toISOString(),
-        message: `Order simulated in Agentic Sandbox mode with full pre-trade RiskGuard audit and human CONFIRM gate.`,
-      };
+      throw new Error(
+        "Cannot execute live order: BINANCE_API_KEY and BINANCE_API_SECRET are required in .env."
+      );
     }
 
     const timestamp = Date.now();
