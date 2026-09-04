@@ -45,16 +45,13 @@ async function main() {
     )
   );
 
-  if (!process.env.BINANCE_API_KEY || !process.env.BINANCE_API_SECRET) {
-    console.error(
-      chalk.bold.red(
-        "\n❌ Binance Configuration Error: BINANCE_API_KEY and BINANCE_API_SECRET are required in .env for live trading.\n"
-      )
-    );
-    process.exit(1);
+  const hasBinanceKeys = Boolean(process.env.BINANCE_API_KEY && process.env.BINANCE_API_SECRET);
+  if (hasBinanceKeys) {
+    console.log(chalk.green("[Binance Engine] Live Production Authenticated (Spot • Futures • Sub-Accounts) ✓"));
+  } else {
+    console.log(chalk.cyan("[Binance Engine] Public Market Intelligence Mode (Live feeds & technicals active; API keys required for live trading)"));
   }
 
-  console.log(chalk.green("[Binance Engine] Live Production Authenticated (Spot • Futures • Sub-Accounts) ✓"));
   console.log(chalk.green("[Market Data] Connected directly to official Binance real-time feeds ✓"));
   console.log(chalk.green("[Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓"));
   console.log(chalk.green("[Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓\n"));

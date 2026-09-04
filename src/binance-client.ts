@@ -182,9 +182,11 @@ export class BinanceClient {
    */
   async getAccountBalances(): Promise<any> {
     if (!this.hasKeys()) {
-      throw new Error(
-        "Binance API credentials missing. Please configure BINANCE_API_KEY and BINANCE_API_SECRET in your .env file."
-      );
+      return {
+        status: "AUTHENTICATION_REQUIRED",
+        message:
+          "Live Binance API credentials (BINANCE_API_KEY and BINANCE_API_SECRET) are required in .env to inspect private account balances and sub-accounts. Public market data and technical indicators remain fully active.",
+      };
     }
 
     const result: any = {
@@ -310,9 +312,11 @@ export class BinanceClient {
     price?: number;
   }): Promise<any> {
     if (!this.hasKeys()) {
-      throw new Error(
-        "Cannot execute live order: BINANCE_API_KEY and BINANCE_API_SECRET are required in .env."
-      );
+      return {
+        status: "AUTHENTICATION_REQUIRED",
+        message:
+          "Live Binance API credentials (BINANCE_API_KEY and BINANCE_API_SECRET) are required in .env to execute live orders on Binance. Public market data and technical indicators remain fully active.",
+      };
     }
 
     const timestamp = Date.now();
