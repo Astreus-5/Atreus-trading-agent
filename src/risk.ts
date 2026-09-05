@@ -116,15 +116,17 @@ export class RiskGuard {
         violations.push("❌ Leverage must be at least 1×.");
       }
 
-      // Mandatory stop-loss validation on leveraged positions
-      if (!proposal.stopLossPrice || proposal.stopLossPrice <= 0) {
-        violations.push("❌ Leveraged futures positions strictly require a valid stop-loss price.");
-      } else if (proposal.price && proposal.price > 0) {
-        const slPct = Math.abs((proposal.price - proposal.stopLossPrice) / proposal.price) * 100;
-        if (slPct < this.config.stopLossPct) {
-          violations.push(
-            `❌ Stop-loss distance (${slPct.toFixed(2)}%) is tighter than the required minimum threshold of ${this.config.stopLossPct}%.`
-          );
+      // Mandatory stop-loss validation on leveraged positions (opening orders only)
+      if (proposal.side === "BUY") {
+        if (!proposal.stopLossPrice || proposal.stopLossPrice <= 0) {
+          violations.push("❌ Leveraged futures opening positions strictly require a valid stop-loss price.");
+        } else if (proposal.price && proposal.price > 0) {
+          const slPct = Math.abs((proposal.price - proposal.stopLossPrice) / proposal.price) * 100;
+          if (slPct < this.config.stopLossPct) {
+            violations.push(
+              `❌ Stop-loss distance (${slPct.toFixed(2)}%) is tighter than the required minimum threshold of ${this.config.stopLossPct}%.`
+            );
+          }
         }
       }
     }
