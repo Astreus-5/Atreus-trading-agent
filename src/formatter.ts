@@ -111,10 +111,15 @@ export function formatTerminalResponse(markdown: string): string {
  * Highlights key-value patterns (e.g. "Free: 7.92640413", "Status: SUCCESS")
  */
 function formatKeyValue(text: string): string {
-  const kvMatch = text.match(/^([^:]+):\s*(.+)$/);
+  // Strip outer bold markers from keys like **Spot Wallet: ** or **USDT: **
+  const cleaned = text.replace(/\*\*/g, "").replace(/__/g, "").trim();
+  const kvMatch = cleaned.match(/^([^:]+):\s*(.*)$/);
   if (kvMatch) {
     const key = kvMatch[1].trim();
     const val = kvMatch[2].trim();
+    if (!val) {
+      return chalk.bold.cyan(key + ":");
+    }
     return chalk.bold.white(key + ": ") + colorizeValue(formatInline(val));
   }
   return formatInline(text);
@@ -135,10 +140,18 @@ function colorizeValue(val: string): string {
     return chalk.bold.yellow(val);
   }
 
-  // Currency highlight: e.g. 7.9264 USDT -> green amount, cyan currency
-  return val.replace(/\b(\d+(?:\.\d+)?)\s*(USDT|BNB|BTC|ETH|SOL|USD)\b/gi, (_, amt, cur) => {
-    return chalk.bold.green(amt) + " " + chalk.cyan(cur.toUpperCase());
+  // Dim helper words like "(available)"
+  let formatted = val.replace(/\((available|locked|free|total)\)/gi, (_, word) => chalk.dim(`(${word})`));
+
+  // Currency & numbers highlight: e.g. 7.9264 USDT -> green amount, cyan currency
+  formatted = formatted.replace(/\b(\d+(?:\.\d+)?)\s*(USDT|BNB|BTC|ETH|SOL|USD)?\b/gi, (match, amt, cur) => {
+    if (cur) {
+      return chalk.bold.green(amt) + " " + chalk.cyan(cur.toUpperCase());
+    }
+    return chalk.bold.green(amt);
   });
+
+  return formatted;
 }
 
 /**
@@ -213,6 +226,7 @@ function formatInline(text: string): string {
   // Bold text: **bold** or __bold__
   result = result.replace(/\*\*([^*]+)\*\*/g, (_, bold) => chalk.bold(bold));
   result = result.replace(/__([^_]+)__/g, (_, bold) => chalk.bold(bold));
+  result = result.replace(/\*\*/g, "").replace(/__/g, "");
 
   // Italic text: *italic* or _italic_
   result = result.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, "$1" + chalk.dim("$2") + "$3");
