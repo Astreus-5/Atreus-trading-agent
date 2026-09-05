@@ -124,13 +124,19 @@ export class BinanceSkillsRunner {
     if (fs.existsSync(cliMjsPath)) {
       try {
         const jsonString = JSON.stringify(params);
-        const { stdout } = await execFileAsync("node", [cliMjsPath, command, jsonString], {
+        // Use process.execPath so it finds node.exe reliably on Windows, macOS, and Linux
+        const { stdout } = await execFileAsync(process.execPath, [cliMjsPath, command, jsonString], {
           timeout: 15000,
           env: { ...process.env },
+          shell: process.platform === "win32",
         });
         try {
           const parsed = JSON.parse(stdout);
-          return parsed.data ?? parsed;
+          let data = parsed.data ?? parsed;
+          if (Array.isArray(data) && data.length > 5) {
+            data = data.slice(0, 5); // Return top 5 most relevant results for concise LLM context
+          }
+          return data;
         } catch {
           return { output: stdout.trim() };
         }
@@ -185,7 +191,7 @@ export class BinanceSkillsRunner {
       if (fs.existsSync(academyScript)) {
         try {
           const query = params.query || command;
-          const { stdout } = await execAsync(`node "${academyScript}" search "${query}"`, {
+          const { stdout } = await execAsync(`"${process.execPath}" "${academyScript}" search "${query}"`, {
             timeout: 10000,
           });
           return { searchResult: stdout.trim() };

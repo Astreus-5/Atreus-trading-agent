@@ -136,15 +136,45 @@ atreus-trading-agent/
 
 ### Step 1: Clone & Install
 
+#### 🐧 Linux & 🍎 macOS (Terminal / Bash / Zsh):
 ```bash
 git clone https://github.com/Astreus-5/Atreus-trading-agent.git
 cd Atreus-trading-agent
 npm install
 ```
 
+#### 🪟 Windows (PowerShell):
+```powershell
+# 1. Clone into your user folder (or download ZIP from GitHub)
+git clone https://github.com/Astreus-5/Atreus-trading-agent.git
+cd Atreus-trading-agent
+
+# 2. If PowerShell blocks npm with an ExecutionPolicy error, run this once:
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+# 3. Install dependencies
+npm install
+```
+
+> **💡 No Git installed?** Click the green **Code → Download ZIP** button on GitHub, extract the folder, open your terminal inside it, and run `npm install`.
+
 ---
 
-### Step 2: Get Your Binance Sub-Account API Key
+### Step 2: Interactive First-Run Wizard or Manual Setup
+
+You have two easy ways to set up:
+
+- **Option A — Interactive Wizard (Recommended):** Simply run:
+  ```bash
+  npm start
+  ```
+  Atreus will detect that `.env` is unconfigured and launch an interactive 3-step setup wizard right in your terminal. It asks for your AI key, Binance keys (or gives the MCP option), and pre-fills safe risk defaults automatically!
+
+- **Option B — Manual `.env` File:** Follow Steps 2b & 3 below if you prefer configuring the file manually.
+
+---
+
+### Step 2b: Get Your Binance Sub-Account API Key
 
 > ⚠️ **Always use a Sub-Account key — never your main account key.** Sub-accounts have zero withdrawal authority, so the agent cannot move funds off Binance.
 

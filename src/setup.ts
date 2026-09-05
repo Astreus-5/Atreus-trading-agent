@@ -99,8 +99,26 @@ export async function runSetupWizard(): Promise<void> {
     process.exit(1);
   }
 
-  // ── Step 2: Binance Sub-Account Keys ───────────────────────────────────────
-  console.log(chalk.bold.white("\n\n🔑 Step 2 of 3 — Binance Sub-Account API Keys\n"));
+  // ── Step 2: Binance Connection Mode ───────────────────────────────────────
+  console.log(chalk.bold.white("\n\n🔑 Step 2 of 3 — Choose your Binance Connection Mode\n"));
+  console.log(chalk.dim("  [ 1 ]  Binance Sub-Account REST API  (Active today — Recommended)"));
+  console.log(chalk.dim("  [ 2 ]  Binance Agent OS MCP Server   (OAuth 2.0 PKCE — Awaiting Binance custom agent whitelist)\n"));
+
+  const modeChoice = (await rl.question(chalk.bold.cyan("Your choice (1/2) [default: 1] > "))).trim();
+
+  if (modeChoice === "2") {
+    console.log(
+      boxen(
+        `${chalk.bold.yellow("ℹ️  Binance Agent OS MCP Status (Future-Ready)")}\n\n` +
+          `${chalk.white("Binance's OAuth server currently requires custom agent whitelisting.")}\n` +
+          `${chalk.white("The full RFC 7636 PKCE OAuth client is built into Atreus and ready.")}\n\n` +
+          `${chalk.cyan("To activate MCP:")} Run ${chalk.bold.green("npm start -- --mcp-auth")} anytime.\n\n` +
+          `${chalk.dim("To trade immediately today, let's configure your Sub-Account API key below:")}`,
+        { padding: 1, borderStyle: "round", borderColor: "yellow" }
+      )
+    );
+  }
+
   console.log(
     boxen(
       `${chalk.bold.yellow("How to get your Binance Sub-Account API Key:")}\n\n` +
