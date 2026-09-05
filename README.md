@@ -93,9 +93,10 @@ atreus-trading-agent/
 │   ├── index.ts               # Interactive CLI application & startup lifecycle
 │   ├── llm-provider.ts        # Universal Multi-LLM Adapter (Claude, GPT, Gemini, DeepSeek)
 │   ├── skills-runner.ts       # Type-safe runner & bridge for Binance Skills Hub scripts
-│   ├── binance-client.ts      # Unified Binance REST client (Sub-Account isolated)
+│   ├── binance-client.ts      # Unified Binance REST client (Spot, Convert, Futures)
 │   ├── indicators.ts          # Technical indicators (RSI 14, SMA 7, SMA 25)
-│   ├── tools.ts               # AI Agent function tool declarations & router
+│   ├── formatter.ts           # Terminal ANSI Markdown & color formatter
+│   ├── tools.ts               # 20 AI Agent function tool declarations & router
 │   ├── prompt.ts              # 4-Stage Reasoning & Execution institutional system prompt
 │   ├── risk.ts                # RiskGuard pre-trade auditing engine
 │   ├── confirmation.ts        # Double-bordered visual human confirmation card
@@ -233,6 +234,18 @@ Propose a $5,000 buy on BTC with a $500 balance
 Propose a 2x long position on ETHUSDT with a 2% stop-loss
 ```
 *The agent displays the visual confirmation card. Type `CONFIRM` to execute or press Enter to cancel.*
+
+**6. Live Futures Position & PnL Monitoring:**
+```text
+Show my open futures positions
+```
+*The agent calls `get_futures_positions` to report real-time entry price, mark price, leverage, and unrealized PnL.*
+
+**7. Unified Trade Journal & Fill Receipts:**
+```text
+Show my recent trade history
+```
+*The agent calls `get_my_trades` to display recent execution receipts and commissions across Spot and USDS-M Futures.*
 
 ---
 
