@@ -36,6 +36,22 @@ export function envExists(): boolean {
   return isConfiguredContent(content);
 }
 
+import pkg from "enquirer";
+const { Password } = pkg as any;
+
+async function askSecret(message: string, fallbackRl: readline.Interface): Promise<string> {
+  try {
+    const promptInstance = new Password({
+      name: "secret",
+      message: chalk.bold.cyan(message),
+    });
+    const answer = await promptInstance.run();
+    return (answer || "").trim();
+  } catch {
+    return (await fallbackRl.question(chalk.bold.cyan(`${message} > `))).trim();
+  }
+}
+
 export async function runSetupWizard(): Promise<void> {
   const rl = readline.createInterface({ input, output });
 
@@ -90,8 +106,8 @@ export async function runSetupWizard(): Promise<void> {
       llmPlaceholder = "sk-ant-...";
   }
 
-  console.log(chalk.dim(`\n  Get your ${llmLabel} API key from their website, then paste it below.`));
-  const llmKey = (await rl.question(chalk.bold.cyan(`\n${llmLabel} API Key > `))).trim();
+  console.log(chalk.dim(`\n  Get your ${llmLabel} API key from their website, then paste it below (masked with * for security):`));
+  const llmKey = await askSecret(`${llmLabel} API Key`, rl);
 
   if (!llmKey || llmKey === llmPlaceholder) {
     console.log(chalk.red("\n❌ No API key entered. Please run 'npm start' again to retry setup.\n"));
@@ -133,8 +149,9 @@ export async function runSetupWizard(): Promise<void> {
     )
   );
 
-  const binanceKey = (await rl.question(chalk.bold.cyan("\nBinance Sub-Account API Key > "))).trim();
-  const binanceSecret = (await rl.question(chalk.bold.cyan("Binance Sub-Account Secret  > "))).trim();
+  console.log(chalk.dim("\n  Paste your Binance keys below (masked with * for security):"));
+  const binanceKey = await askSecret("Binance Sub-Account API Key", rl);
+  const binanceSecret = await askSecret("Binance Sub-Account Secret", rl);
 
   if (!binanceKey || !binanceSecret) {
     console.log(chalk.red("\n❌ Binance keys are required. Please run 'npm start' again to retry setup.\n"));
