@@ -36,20 +36,27 @@ export interface FundingRateData {
  * Unified Binance Client providing real-time market data access and authenticated order routing.
  */
 export class BinanceClient {
-  private readonly apiKey: string;
-  private readonly apiSecret: string;
+  private _apiKey?: string;
+  private _apiSecret?: string;
   private readonly spotBaseUrl = "https://api.binance.com";
   private readonly futuresBaseUrl = "https://fapi.binance.com";
   private readonly coinFuturesBaseUrl = "https://dapi.binance.com";
 
   /**
    * Initializes the Binance Client.
-   * @param apiKey Your Binance sub-account API key (trade-only, no withdrawal rights).
-   * @param apiSecret Your Binance sub-account API secret.
+   * Dynamically retrieves the latest credentials from process.env if not explicitly passed.
    */
-  constructor(apiKey = process.env.BINANCE_SUB_ACCOUNT_API_KEY ?? "", apiSecret = process.env.BINANCE_SUB_ACCOUNT_API_SECRET ?? "") {
-    this.apiKey = apiKey.trim();
-    this.apiSecret = apiSecret.trim();
+  constructor(apiKey?: string, apiSecret?: string) {
+    this._apiKey = apiKey?.trim();
+    this._apiSecret = apiSecret?.trim();
+  }
+
+  public get apiKey(): string {
+    return (this._apiKey || process.env.BINANCE_SUB_ACCOUNT_API_KEY || "").trim();
+  }
+
+  public get apiSecret(): string {
+    return (this._apiSecret || process.env.BINANCE_SUB_ACCOUNT_API_SECRET || "").trim();
   }
 
   /**
