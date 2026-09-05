@@ -128,15 +128,44 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
-      name: "redeem_simple_earn",
-      description: "Redeems yield-bearing assets (e.g. USDT) from Binance Simple Earn (Flexible Savings) back to Master Spot Wallet so they can be traded or transferred.",
+      name: "get_open_orders",
+      description: "Retrieves active open limit orders across Spot markets on Binance.",
       parameters: {
         type: "object",
         properties: {
-          asset: { type: "string", description: "Asset symbol, e.g. USDT" },
-          amount: { type: "number", description: "Amount to redeem" },
+          symbol: { type: "string", description: "Optional symbol, e.g. BNBUSDT" },
         },
-        required: ["asset", "amount"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cancel_order",
+      description: "Cancels an active open limit order on Binance.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: { type: "string", description: "Symbol of the order, e.g. BNBUSDT" },
+          orderId: { type: "number", description: "Binance order ID to cancel" },
+        },
+        required: ["symbol"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "convert_tokens",
+      description: "Instantly converts tokens using Binance Convert (zero fees, no $5 minimum notional filter). Perfect for small balances, dust, or direct swaps.",
+      parameters: {
+        type: "object",
+        properties: {
+          fromAsset: { type: "string", description: "Asset to sell, e.g. BNB" },
+          toAsset: { type: "string", description: "Asset to receive, e.g. USDT" },
+          amount: { type: "number", description: "Amount of fromAsset to convert" },
+        },
+        required: ["fromAsset", "toAsset", "amount"],
       },
     },
   },
@@ -315,6 +344,15 @@ export async function executeAgentTool(
         price: proposal.price,
       });
     }
+
+    case "get_open_orders":
+      return await client.getOpenOrders(args.symbol);
+
+    case "cancel_order":
+      return await client.cancelOrder(args.symbol, args.orderId);
+
+    case "convert_tokens":
+      return await client.convertTokens(args.fromAsset, args.toAsset, args.amount);
 
     case "redeem_simple_earn":
       return await client.redeemFlexibleEarn(args.asset, args.amount);

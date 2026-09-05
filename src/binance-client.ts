@@ -589,4 +589,43 @@ export class BinanceClient {
       transferId: data.tranId,
     };
   }
+
+  /**
+   * Retrieves active open limit orders across Spot markets.
+   */
+  async getOpenOrders(symbol?: string): Promise<any[]> {
+    if (!this.hasKeys()) return [];
+    const ts = Date.now();
+    let query = `timestamp=${ts}`;
+    if (symbol) query = `symbol=${symbol.toUpperCase()}&${query}`;
+    const sig = this.sign(query);
+
+    const res = await fetch(`${this.spotBaseUrl}/api/v3/openOrders?${query}&signature=${sig}`, {
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+    if (!res.ok) return [];
+    return (await res.json()) as any[];
+  }
+
+  /**
+   * Cancels an active open order on Binance.
+   */
+  async cancelOrder(symbol: string, orderId?: number): Promise<any> {
+    if (!this.hasKeys()) throw new Error("API credentials required to cancel order");
+    const ts = Date.now();
+    let query = `symbol=${symbol.toUpperCase()}&timestamp=${ts}`;
+    if (orderId) query += `&orderId=${orderId}`;
+    const sig = this.sign(query);
+
+    const res = await fetch(`${this.spotBaseUrl}/api/v3/order?${query}&signature=${sig}`, {
+      method: "DELETE",
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Order cancellation failed: ${err}`);
+    }
+    return await res.json();
+  }
 }
+
