@@ -58,12 +58,46 @@ export class BinanceClient {
     return Boolean(this.apiKey && this.apiSecret);
   }
 
+  private stepSizeCache = new Map<string, number>();
+
+  /**
+   * Dynamically retrieves the exchange LOT_SIZE stepSize filter for any trading pair from Binance.
+   */
+  public async getStepSize(symbol: string): Promise<number> {
+    const sym = symbol.toUpperCase();
+    if (this.stepSizeCache.has(sym)) return this.stepSizeCache.get(sym)!;
+
+    try {
+      const res = await fetch(`${this.spotBaseUrl}/api/v3/exchangeInfo?symbol=${sym}`);
+      if (res.ok) {
+        const data: any = await res.json();
+        const lotFilter = data.symbols?.[0]?.filters?.find((f: any) => f.filterType === "LOT_SIZE");
+        if (lotFilter?.stepSize) {
+          const step = parseFloat(lotFilter.stepSize);
+          this.stepSizeCache.set(sym, step);
+          return step;
+        }
+      }
+    } catch {}
+    return 0.001;
+  }
+
+  /**
+   * Formats any requested token quantity down to the exchange's required stepSize precision.
+   */
+  public formatQuantity(qty: number, stepSize: number): number {
+    const precision = Math.max(0, Math.round(-Math.log10(stepSize)));
+    const factor = Math.pow(10, precision);
+    return Math.floor(qty * factor) / factor;
+  }
+
   /**
    * Generates HMAC-SHA256 signature for Binance API requests.
    */
   private sign(queryString: string): string {
     return crypto.createHmac("sha256", this.apiSecret).update(queryString).digest("hex");
   }
+
 
   // ── Public Market Intelligence (100% Real-Time Live Feeds) ──────────────────
 
@@ -339,12 +373,13 @@ export class BinanceClient {
 
     let query = `symbol=${params.symbol.toUpperCase()}&side=${params.side}&type=${params.orderType}`;
 
-    // On Binance Spot MARKET BUY: use quoteOrderQty if notionalUsd is provided to spend exact amount and prevent LOT_SIZE filter failures
+    // On Binance Spot MARKET BUY: use quoteOrderQty if user specified notional USD amount to spend exact requested capital
     if (!isFutures && params.orderType === "MARKET" && params.side === "BUY" && params.notionalUsd && params.notionalUsd > 0) {
-      query += `&quoteOrderQty=${params.notionalUsd.toFixed(2)}`;
+      query += `&quoteOrderQty=${params.notionalUsd}`;
     } else {
-      // Standardize quantity precision (up to 4 decimals for standard spot/futures lots)
-      const formattedQty = Number(params.quantity.toFixed(4));
+      // Dynamically query symbol stepSize filter from Binance exchangeInfo to ensure valid LOT_SIZE
+      const stepSize = await this.getStepSize(params.symbol);
+      const formattedQty = this.formatQuantity(params.quantity, stepSize);
       query += `&quantity=${formattedQty}`;
     }
 
