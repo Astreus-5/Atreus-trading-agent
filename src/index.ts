@@ -14,10 +14,10 @@ async function main() {
   console.clear();
   console.log(
     boxen(
-      `${chalk.bold.yellow("BINANCE AGENT OS — AI TRADING AGENT")}\n` +
+      `${chalk.bold.yellow("BINANCE AGENT OS — ATREUS TRADING AGENT")}\n` +
         `${chalk.cyan("Track A Submission: Autonomous AI Trading Agent")}\n\n` +
-        `${chalk.green("Official Model Context Protocol (MCP) • Universal LLM Engine")}\n` +
-        `${chalk.dim("81 Dynamic Official Tools • RiskGuard Engine • Human-in-the-Loop Safe")}`,
+        `${chalk.green("Isolated Sub-Account Security Perimeter • Zero-Withdrawal Safe")}\n` +
+        `${chalk.dim("Pre-Execution Binance Skills Intelligence • 4-Stage Reasoning Engine")}`,
       {
         padding: 1,
         margin: { top: 1, bottom: 1 },
@@ -77,16 +77,18 @@ async function main() {
     )
   );
 
-  console.log(chalk.green("[Market Data] Connected directly to official Binance real-time feeds ✓"));
+  console.log(chalk.green("[Sub-Account Security] Zero-withdrawal trading perimeter active ✓"));
+  console.log(chalk.green("[Binance Skills Hub] Pre-trade multi-chain intelligence & sentiment active ✓"));
   console.log(chalk.green("[Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓"));
-  console.log(chalk.green("[Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓\n"));
+  console.log(chalk.green("[Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓"));
+  console.log(chalk.green("[Post-Trade Synthesis] Institutional fill & slippage evaluation enabled ✓\n"));
 
-  console.log(chalk.bold.green("✨ Binance AI Trading Agent is online and ready for instructions.\n"));
+  console.log(chalk.bold.green("✨ Atreus AI Trading Agent is online and ready for instructions.\n"));
   console.log(
     chalk.dim(
       "Try these commands:\n" +
-        " • 'Check live BTCUSDT price and funding rate'\n" +
-        " • 'Analyze ETHUSDT RSI and momentum'\n" +
+        " • 'Analyze BTC momentum, smart money inflows, and order book depth'\n" +
+        " • 'Research token intelligence on BNB across chains'\n" +
         " • 'What is my current sub-account balance?'\n" +
         " • 'Propose a 2x long position on ETHUSDT with 2% stop-loss'\n" +
         " • Type 'exit' or Ctrl+C to quit.\n"

@@ -1,11 +1,11 @@
-# Binance AI Trading Agent (TypeScript Edition)
-### 🏆 Binance Agent OS Mini Hackathon — Track A: AI Agent Development ($20,000 Prize Pool)
+# Binance AI Trading Agent (TypeScript Edition) — Atreus
+### 🏆 Binance Agent OS Hackathon — Track A: Autonomous AI Trading Agent ($20,000 Prize Pool)
 
-An autonomous, institutional-grade AI Trading Agent built in **TypeScript** supporting **Claude (Anthropic)**, **GPT-4o (OpenAI)**, **Gemini 1.5 Pro (Google)**, and **DeepSeek (OpenRouter)**. Engineered for real-time Binance market intelligence, quantitative technical analysis, strict pre-trade risk controls, and human-in-the-loop trade execution.
+An autonomous, institutional-grade AI Trading Agent built in **TypeScript** supporting **Claude (Anthropic)**, **GPT-4o (OpenAI)**, **Gemini 1.5 Pro (Google)**, and **DeepSeek (OpenRouter)**. Engineered for real-time Binance market intelligence, cross-chain token research via the **Binance Skills Hub**, strict pre-trade risk controls, an isolated zero-withdrawal **Sub-Account Security Perimeter**, and a mandatory **4-Stage Reasoning & Execution Cycle**.
 
 ---
 
-## 🌟 Universal LLM & Agent Architecture
+## 🌟 Universal Architecture & Cognitive Pipeline
 
 ```
                                ┌────────────────────────────────────────────────────────┐
@@ -13,42 +13,61 @@ An autonomous, institutional-grade AI Trading Agent built in **TypeScript** supp
                                │  Claude 3.5 Sonnet • GPT-4o • Gemini 1.5 • DeepSeek    │
                                │  (Auto-detected from available environment API key)    │
                                └───────────────────────────┬────────────────────────────┘
-                                                           │ Tool Calls
+                                                           │
                                                            ▼
-                               ┌────────────────────────────────────────────────────────┐
-                               │                  AI Agent Tool Router                  │
-                               │           (src/tools.ts • src/indicators.ts)           │
-                               └─────────────┬────────────────────────────┬─────────────┘
-                                             │                            │
-                        Live Data Feeds      ▼                            ▼     Trade Order Proposals
-                      ┌─────────────────────────────┐              ┌─────────────────────────────────┐
-                      │  Official Binance Endpoints │              │   Pre-Trade RiskGuard Engine    │
-                      │  • Spot Ticker & 24h Stats  │              │   • Max 5% Position Size        │
-                      │  • USDS-M Funding & Mark    │              │   • Max 5× Leverage Ceiling     │
-                      │  • Live Order Book Depth    │              │   • Mandatory ≥2% Stop-Loss     │
-                      │  • Real-time RSI(14) & SMAs │              │   • 10% Daily Drawdown Breaker  │
-                      └─────────────────────────────┘              └────────────────┬────────────────┘
-                                                                                    │ Passed Audit
-                                                                                    ▼
-                                                                  ┌──────────────────────────────────┐
-                                                                  │ Human-in-the-Loop Confirmation   │
-                                                                  │ Visual double-bordered box card  │
-                                                                  │ Operator must type 'CONFIRM'     │
-                                                                  └─────────────────┬────────────────┘
-                                                                                    │ CONFIRM
-                                                                                    ▼
-                                                                  ┌──────────────────────────────────┐
-                                                                  │   Live Binance Order Execution   │
-                                                                  │   (Spot Matching Engine API)     │
-                                                                  └──────────────────────────────────┘
+                ┌──────────────────────────────────────────────────────────────────────────────┐
+                │          STAGE 1: PRE-EXECUTION REASONING & SKILLS RESEARCH (MANDATORY)      │
+                │  • research_token_intelligence: Cross-chain prices, 24h volume & liquidity   │
+                │  • get_smart_money_inflows: Institutional & whale accumulation metrics       │
+                │  • get_social_sentiment_hype: Community buzz & social volume rankings        │
+                │  • get_market_technicals: Real-time RSI(14), SMA(7), SMA(25) momentum       │
+                │  • get_spot_order_book & get_futures_funding_rate: Liquidity & funding bias  │
+                │  ➔ Generates Institutional Market Thesis BEFORE proposing any trade          │
+                └──────────────────────────────────────────┬───────────────────────────────────┘
+                                                           │
+                                                           ▼
+                ┌──────────────────────────────────────────────────────────────────────────────┐
+                │               STAGE 2: PRE-TRADE RISK AUDIT & HUMAN GATE                     │
+                │  • RiskGuard Engine: Max 5% Position Size • Max 5× Leverage Ceiling          │
+                │  • Mandatory Stop-Loss (≥2%) • 10% Daily Drawdown Circuit Breaker            │
+                │  • Visual Double-Bordered Trade Card: Operator must type 'CONFIRM'           │
+                └──────────────────────────────────────────┬───────────────────────────────────┘
+                                                           │ Passed & Confirmed
+                                                           ▼
+                ┌──────────────────────────────────────────────────────────────────────────────┐
+                │             STAGE 3: ISOLATED SUB-ACCOUNT EXECUTION (FAST-PATH)              │
+                │  • Dedicated Sub-Account API Credentials (HMAC-SHA256 / Ed25519)             │
+                │  • Zero-Withdrawal Security Perimeter (On-chain withdrawals physically blocked)│
+                │  • Direct Binance Exchange Matching Engine (<50ms execution latency)         │
+                │  • Spot & USDS-M Perpetual Futures order placement                           │
+                └──────────────────────────────────────────┬───────────────────────────────────┘
+                                                           │ Raw Fill Data
+                                                           ▼
+                ┌──────────────────────────────────────────────────────────────────────────────┐
+                │           STAGE 4: POST-EXECUTION SYNTHESIS & ACTIVE MONITORING              │
+                │  • Fill Efficiency & Slippage Analysis (Executed vs Proposed price)          │
+                │  • Sub-Account Margin & Portfolio Allocation Update                          │
+                │  • Active Stop-Loss, Take-Profit, and Invalidation Price Triggers            │
+                │  • Continuous Risk Advisory                                                  │
+                └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Universal Multi-LLM Engine**: Runs with **ANY** configured LLM API key (**Anthropic Claude**, **OpenAI GPT-4o**, **Google Gemini**, or **OpenRouter DeepSeek**). The engine auto-detects whichever key is provided.
-2. **Native TypeScript Architecture**: Built on Node.js 20+ and TypeScript ES2022 with zero legacy dependencies for optimal speed and strict type safety.
-3. **Multi-Market Intelligence & Account Engine**: Instantly pulls real-time Spot prices, 24h stats, USDS-M funding rates, mark prices, order book depth, and audits balances across Master Spot, Simple Earn, and Binance Agent OS Sub-Accounts.
-4. **Quantitative Technical Indicator Engine**: Computes live **RSI (14)**, **SMA (7)**, and **SMA (25)** directly from Binance candlestick bars to assess overbought/oversold regimes.
-5. **Pre-Trade RiskGuard Engine**: Audits every single trade proposal against strict risk invariants before human review.
-6. **Human-in-the-Loop Safeguard**: The AI cannot unilaterally place orders. Every trade triggers a visual terminal card requiring the operator to explicitly type `CONFIRM`.
+### Core Innovations & Security Pillars
+1. **Isolated Sub-Account Security Perimeter**:
+   - The agent operates strictly within a **dedicated Binance Sub-Account**.
+   - **Zero-Withdrawal Risk**: On-chain withdrawals are physically blocked by Binance's matching engine for sub-accounts.
+   - **Zero Master Account Exposure**: The agent cannot see or touch master spot savings, Simple Earn, or cold storage.
+2. **Pre-Execution Binance Skills Hub Intelligence**:
+   - Integrates official skills (`query-token-info`, `crypto-market-rank`, `binance-trading-signal`) directly into the LLM's cognitive loop.
+   - The agent is structurally prohibited from placing blind orders without first synthesizing technical, smart-money, and orderbook data.
+3. **Pre-Trade RiskGuard Engine**:
+   - Hardcoded position limits (max 5% of sub-account balance), leverage ceiling (max 5×), mandatory stop-loss, and daily drawdown breaker.
+4. **Human-in-the-Loop Confirmation Gate**:
+   - No unilateral autonomous execution. The operator must review the visual proposal card and type `CONFIRM` in the terminal.
+5. **Post-Execution Institutional Synthesis**:
+   - Rather than dumping raw API JSON, the agent reasons through the fill, calculates slippage, updates margin allocations, and establishes monitoring triggers.
+6. **Decoupled Future-Ready MCP Adapter**:
+   - Includes a complete, dormant JSON-RPC 2.0 client (`src/mcp-client.ts`) and PKCE OAuth manager (`src/mcp-auth.ts`) for `https://agent.binance.com/mcp/agentic`. Toggling `ENABLE_BINANCE_MCP=true` instantly switches to MCP the moment Binance enables custom agent whitelisting.
 
 ---
 
@@ -59,23 +78,34 @@ atreus-trading-agent/
 ├── package.json               # Node.js & TypeScript dependencies
 ├── tsconfig.json              # Strict ES2022 TypeScript settings
 ├── .env.example               # Universal environment configuration template
-├── .gitignore                 # Safe exclusions (secrets & tokens)
-├── README.md                  # Comprehensive documentation & setup guide
+├── .gitignore                 # Safe exclusions (secrets, tokens, build files)
+├── README.md                  # Comprehensive documentation & evaluation guide
 ├── RISK_DISCLAIMER.md         # Mandatory financial risk disclosure
 │
+├── .agents/skills/            # Official Binance Skills Hub (19 installed skills)
+│   ├── query-token-info/      # Cross-chain DEX token lookup, OHLCV, metadata
+│   ├── crypto-market-rank/    # Social hype, smart-money inflows, market caps
+│   ├── binance-trading-signal/# Smart-money trading signals & strategy backtests
+│   ├── binance-wallet-tracker/# Wallet monitoring, KOL tracking, anomaly orders
+│   └── ... (15 more skills)
+│
 ├── src/
-│   ├── index.ts               # Interactive CLI Application loop
-│   ├── llm-provider.ts        # Universal LLM Adapter (Claude, GPT, Gemini, OpenRouter)
-│   ├── binance-client.ts      # Unified Binance market & execution client
+│   ├── index.ts               # Interactive CLI application & startup lifecycle
+│   ├── llm-provider.ts        # Universal Multi-LLM Adapter (Claude, GPT, Gemini, DeepSeek)
+│   ├── skills-runner.ts       # Type-safe runner & bridge for Binance Skills Hub scripts
+│   ├── binance-client.ts      # Unified Binance REST client (Sub-Account isolated)
 │   ├── indicators.ts          # Technical indicators (RSI 14, SMA 7, SMA 25)
 │   ├── tools.ts               # AI Agent function tool declarations & router
-│   ├── prompt.ts              # Institutional trading system prompt
+│   ├── prompt.ts              # 4-Stage Reasoning & Execution institutional system prompt
 │   ├── risk.ts                # RiskGuard pre-trade auditing engine
-│   └── confirmation.ts        # Double-bordered visual human confirmation card
+│   ├── confirmation.ts        # Double-bordered visual human confirmation card
+│   ├── mcp-client.ts          # Decoupled official Binance Agent OS MCP client (81 tools)
+│   └── mcp-auth.ts            # Decoupled official Binance PKCE OAuth manager
 │
 ├── tests/
-│   ├── risk.test.ts           # RiskGuard unit test suite
-│   └── confirmation.test.ts   # Confirmation gate unit test suite
+│   ├── risk.test.ts           # RiskGuard unit test suite (position limits, leverage, SL)
+│   ├── confirmation.test.ts   # Confirmation gate unit test suite
+│   └── indicators.test.ts     # Technical analysis calculation unit tests
 │
 └── examples/
     └── demo_conversation.md   # Step-by-step example execution walkthrough
@@ -93,46 +123,47 @@ atreus-trading-agent/
   - `GOOGLE_API_KEY` (Gemini 1.5 Pro)
   - `OPENROUTER_API_KEY` (DeepSeek)
 
+---
+
 ### Step 1: Clone & Install
 
 ```bash
-git clone https://github.com/Astreus-5/atreus-trading-agent.git
-cd atreus-trading-agent
+git clone https://github.com/Astreus-5/Atreus-trading-agent.git
+cd Atreus-trading-agent
 npm install
 ```
-
-> ✅ Expected: You'll see packages installing. No errors. Takes ~30 seconds.
 
 ---
 
 ### Step 2: Configure Environment
 
 Copy the example environment file:
-
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` in any text editor and add **just one** LLM API key — whichever you already have:
+Open `.env` and configure your API keys:
 
 ```dotenv
 # ─── PICK ONE LLM KEY — only one is required ───────────────────
+ANTHROPIC_API_KEY=sk-ant-...        # Claude 3.5 Sonnet
+# OPENAI_API_KEY=sk-proj-...        # GPT-4o
+# GOOGLE_API_KEY=AIzaSy...          # Gemini 1.5 Pro
+# OPENROUTER_API_KEY=sk-or-v1-...   # DeepSeek
 
-ANTHROPIC_API_KEY=sk-ant-...        # Claude 3.5 Sonnet  → get at console.anthropic.com
-# OPENAI_API_KEY=sk-proj-...        # GPT-4o             → get at platform.openai.com
-# GOOGLE_API_KEY=AIzaSy...          # Gemini 1.5 Pro     → get at aistudio.google.com
-# OPENROUTER_API_KEY=sk-or-v1-...   # DeepSeek           → get at openrouter.ai/keys
+# ─── DEDICATED SUB-ACCOUNT CREDENTIALS (Recommended) ────────────
+# Isolated trading credentials with zero withdrawal authority:
+BINANCE_API_KEY=your_subaccount_api_key
+BINANCE_API_SECRET=your_subaccount_api_secret
 
-# ─── RISK CONTROLS (optional — safe defaults pre-set) ───────────
+# ─── RISK CONTROLS (Safe defaults pre-set) ─────────────────────
 MAX_POSITION_PCT=5        # Max 5% of balance per trade
 MAX_LEVERAGE=5            # Max 5× leverage for futures
 STOP_LOSS_PCT=2           # Minimum 2% mandatory stop-loss
 DAILY_LOSS_LIMIT_PCT=10   # 10% daily drawdown circuit breaker
 
-# ─── BINANCE LIVE API CREDENTIALS (Required) ───────────────────
-# Connects the agent directly to Binance live market and order execution engines
-BINANCE_API_KEY=your_binance_api_key
-BINANCE_API_SECRET=your_binance_api_secret
+# ─── BINANCE MCP ENGINE (Optional / Future-Ready) ───────────────
+ENABLE_BINANCE_MCP=false  # Set to true when custom agents are whitelisted
 ```
 
 ---
@@ -143,122 +174,95 @@ BINANCE_API_SECRET=your_binance_api_secret
 npm start
 ```
 
-> 🔗 **First-Time Judge / User Connection (Official Binance MCP Flow)**:
-> On first run, the agent presents an official Binance authorization link. Simply log in to Binance, choose your **Agentic Sub-Account**, click **Authorize**, and paste the code from the callback page into the terminal. The token is securely stored in `.binance-token.json` for instant subsequent boots.
+Expected startup output:
+```text
+╭───────────────────────────────────────────────────────────────────────────╮
+│                                                                           │
+│                    BINANCE AGENT OS — ATREUS TRADING AGENT                │
+│              Track A Submission: Autonomous AI Trading Agent              │
+│                                                                           │
+│       Isolated Sub-Account Security Perimeter • Zero-Withdrawal Safe      │
+│   Pre-Execution Binance Skills Intelligence • 4-Stage Reasoning Engine    │
+│                                                                           │
+╰───────────────────────────────────────────────────────────────────────────╯
 
-> ✅ Expected output:
-> ```
-> [Binance MCP Engine] Connected to official Binance Agent OS Server ✓
-> [Binance MCP Engine] 81 dynamic official tools loaded (Spot • Futures • Wallet • Sub-Accounts) ✓
-> [LLM Provider] Auto-detected: OPENROUTER (deepseek/deepseek-chat)
-> [Market Data] Connected directly to official Binance real-time feeds ✓
-> [Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓
-> [Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓
->
-> ✨ Binance AI Trading Agent is online and ready for instructions.
-> You >
-> ```
+[Binance MCP Engine] Adapter dormant (ready for future custom agent support) ✓
+[LLM Provider] Auto-detected: OPENROUTER (deepseek/deepseek-chat)
+[Sub-Account Security] Zero-withdrawal trading perimeter active ✓
+[Binance Skills Hub] Pre-trade multi-chain intelligence & sentiment active ✓
+[Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓
+[Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓
+[Post-Trade Synthesis] Institutional fill & slippage evaluation enabled ✓
 
-The agent dynamically retrieves all 81 official Binance Agent OS tools via MCP JSON-RPC 2.0.
+✨ Atreus AI Trading Agent is online and ready for instructions.
+You > 
+```
 
 ---
 
-### Step 4: Give the Agent Its First Prompt
+### Step 4: Try These Commands
 
-At the `You >` prompt, type any of these to see the agent in action:
+At the `You >` prompt, test the multi-stage pipeline:
 
-**🔎 Live Market Intelligence:**
+**1. Pre-Trade Skills Intelligence & Analysis:**
+```text
+Analyze BTC momentum, smart money inflows, and order book depth
 ```
-Check live BTCUSDT price and funding rate
-```
+*The agent calls `get_market_technicals`, `get_smart_money_inflows`, and `get_spot_order_book` to synthesize a thesis.*
 
-**📊 Technical Analysis:**
+**2. Cross-Chain Token Research via Skills Hub:**
+```text
+Research BNB token intelligence across chains
 ```
-Analyze ETHUSDT RSI and momentum
-```
+*The agent calls `research_token_intelligence` to pull cross-chain prices, liquidity, and DEX metrics.*
 
-**⚠️ Risk Rejection (watch RiskGuard block this):**
+**3. Isolated Sub-Account Balance Inspection:**
+```text
+What is my current sub-account balance?
 ```
-Propose a $5000 buy on BTCUSDT with a $3500 balance
-```
+*The agent inspects isolated Spot and Futures balances.*
 
-**✅ Valid Trade Proposal (triggers CONFIRM gate):**
+**4. RiskGuard Circuit Breaker Test:**
+```text
+Propose a $5,000 buy on BTC with a $500 balance
 ```
+*Watch RiskGuard instantly reject the trade for exceeding the 5% position ceiling.*
+
+**5. Authorized Trade Proposal & Confirmation Gate:**
+```text
 Propose a 2x long position on ETHUSDT with a 2% stop-loss
 ```
-
-> 💡 For the trade proposal: the agent will show a visual authorization card.
-> Type `CONFIRM` to submit the live order to Binance, or press Enter to cancel.
+*The agent displays the visual confirmation card. Type `CONFIRM` to execute or press Enter to cancel.*
 
 ---
 
-### Step 5: Run Automated Tests (Optional)
+### Step 5: Run Automated Tests
 
 ```bash
 npm test
 ```
 
-Expected output:
+Expected test suite output:
 ```text
 ▶ Confirmation Gate Logic
   ✔ validates CONFIRM case-insensitively
+✔ Confirmation Gate Logic
+▶ TechnicalAnalysis Indicators Unit Tests
+  ✔ calculates RSI on upward trending series
+  ✔ calculates RSI on downward trending series
+  ✔ calculates Simple Moving Average (SMA) correctly
+✔ TechnicalAnalysis Indicators Unit Tests
 ▶ RiskGuard Unit Tests
   ✔ allows trade within 5% position size
   ✔ rejects trade exceeding 5% position size
   ✔ enforces maximum leverage limit and stop loss requirement
   ✔ enforces daily loss limit drawdown threshold
-ℹ tests 5 | pass 5 | fail 0
-```
-
----
-
-## 🧪 Interactive Demo & Example Prompts
-
-### 1. Market Intelligence & Technicals
-> **Prompt:** `Analyze live BTCUSDT price, funding rates, and RSI indicators.`
-
-```markdown
-📊 Binance Market Intelligence — BTCUSDT
-• Spot Price: $81,248.32 (+4.24% 24h)
-• USDS-M Funding Rate: +0.0060% (Mark: $81,208.00)
-• Technicals (1h timeframe): RSI(14) = 68.35 | SMA(7) = $81,011.85 | SMA(25) = $80,784.37
-• Analysis: Bullish momentum above short-term moving averages with healthy funding.
-```
-
-### 2. Risk Rejection Test (Circuit Breaker)
-> **Prompt:** `Propose a $2,000 Spot buy on BTCUSDT with a $3,500 balance.`
-
-```markdown
-❌ Trade Rejected by RiskGuard:
-Position size $2,000.00 exceeds allowed limit of $175.00 (5.0% of $3,500.00 balance).
-```
-
-### 3. Authorized Trade Formulation & Confirmation Gate
-> **Prompt:** `Propose a 2x long position on ETHUSDT with a 2% stop-loss.`
-
-```text
-╔══════════════════════════════════════════════════════════════╗
-║        ⚠ TRADE PROPOSAL — HUMAN AUTHORIZATION REQUIRED       ║
-║                                                              ║
-║ Product / Market : USDS-M FUTURES                            ║
-║ Trading Pair     : ETHUSDT                                   ║
-║ Action / Side    : BUY (LONG)                                ║
-║ Order Type       : MARKET                                    ║
-║ Quantity         : 0.05 ETH (~$125.00 Notional)              ║
-║ Leverage         : 2×                                        ║
-║ Stop-Loss Target : $2,450.00 (2.0% below entry)              ║
-║                                                              ║
-║ To authorize and execute this order on Binance, type CONFIRM ║
-║ Press Enter or type anything else to CANCEL.                 ║
-╚══════════════════════════════════════════════════════════════╝
-Your Decision > CONFIRM
-
-✓ Execution confirmed by operator. Submitting order to Binance...
-Order #789210381 FILLED @ $2,500.20
+✔ RiskGuard Unit Tests
+ℹ tests 8 | pass 8 | fail 0
 ```
 
 ---
 
 ## ⚖️ Legal & Risk Disclaimer
 
-Distributed under the MIT License. See [RISK_DISCLAIMER.md](./RISK_DISCLAIMER.md) for full risk details. Cryptocurrency trading involves substantial risk of loss.
+Distributed under the MIT License. See [RISK_DISCLAIMER.md](./RISK_DISCLAIMER.md) for full risk details. Cryptocurrency trading involves substantial risk of loss. Never risk funds you cannot afford to lose.

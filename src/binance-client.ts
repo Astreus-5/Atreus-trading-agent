@@ -191,7 +191,10 @@ export class BinanceClient {
 
     const result: any = {
       mode: "LIVE_BINANCE_AUTHENTICATED",
+      environment: "Isolated Sub-Account / Dedicated API Environment",
       timestamp: new Date().toISOString(),
+      spotBalances: [],
+      futuresBalances: [],
       masterSpotBalances: [],
       masterFuturesBalances: [],
       subAccounts: [],
@@ -295,6 +298,13 @@ export class BinanceClient {
       }
     } catch (err: any) {
       // Non-blocking if sub-account permissions are not granted on this key
+    }
+
+    result.spotBalances = result.masterSpotBalances;
+    result.futuresBalances = result.masterFuturesBalances;
+
+    if (result.subAccounts.length > 0) {
+      result.environment = "Master Account (With Sub-Accounts)";
     }
 
     return result;

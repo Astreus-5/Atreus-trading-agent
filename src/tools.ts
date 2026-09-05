@@ -4,6 +4,7 @@ import { BinanceClient } from "./binance-client.js";
 import { TechnicalAnalysis } from "./indicators.js";
 import { RiskGuard, TradeProposal } from "./risk.js";
 import { requireHumanConfirmation } from "./confirmation.js";
+import { BinanceSkillsRunner } from "./skills-runner.js";
 
 const client = new BinanceClient();
 
@@ -147,6 +148,49 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "research_token_intelligence",
+      description: "Binance Skill: Researches comprehensive token metadata, cross-chain pricing, 24h volume, and liquidity across BSC, Base, Solana, and Ethereum using the official Binance Skills Hub.",
+      parameters: {
+        type: "object",
+        properties: {
+          keyword: { type: "string", description: "Token symbol or name, e.g. BTC, ETH, BNB" },
+          chainIds: { type: "string", description: "Optional comma-separated chain IDs (e.g. '56', '8453', 'CT_501', '1')" },
+        },
+        required: ["keyword"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_smart_money_inflows",
+      description: "Binance Skill: Fetches real-time smart-money net inflow rankings from Binance Web3 Analytics to discover where institutions and smart traders are allocating capital.",
+      parameters: {
+        type: "object",
+        properties: {
+          chainId: { type: "string", description: "Target blockchain ID: '56' (BSC), '8453' (Base), or 'CT_501' (Solana). Default: '56'" },
+          period: { type: "string", enum: ["24h", "7d"], description: "Time period window. Default: '24h'" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_social_sentiment_hype",
+      description: "Binance Skill: Fetches live social buzz, community sentiment, and hype rankings from Binance Web3 Social Intelligence.",
+      parameters: {
+        type: "object",
+        properties: {
+          chainId: { type: "string", description: "Target blockchain ID: '56' (BSC), '8453' (Base), or 'CT_501' (Solana). Default: '56'" },
+          timeRange: { type: "number", description: "Time range (1, 7, or 30 days). Default: 1" },
+        },
+      },
+    },
+  },
 ];
 
 export async function executeAgentTool(
@@ -242,6 +286,15 @@ export async function executeAgentTool(
 
     case "transfer_to_subaccount":
       return await client.transferToSubAccount(args.asset, args.amount, args.subAccountEmail);
+
+    case "research_token_intelligence":
+      return await BinanceSkillsRunner.searchToken(args.keyword, args.chainIds);
+
+    case "get_smart_money_inflows":
+      return await BinanceSkillsRunner.getSmartMoneyInflow(args.chainId ?? "56", args.period ?? "24h");
+
+    case "get_social_sentiment_hype":
+      return await BinanceSkillsRunner.getSocialHype(args.chainId ?? "56", args.timeRange ?? 1);
 
     default:
       return { error: `Unknown tool: ${name}` };
