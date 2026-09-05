@@ -6,6 +6,7 @@ import { stdin as input, stdout as output } from "node:process";
 import { RiskGuard } from "./risk.js";
 import { getSystemPrompt } from "./prompt.js";
 import { MultiLLMAdapter } from "./llm-provider.js";
+import { formatTerminalResponse } from "./formatter.js";
 
 import { BinanceMCPAuth } from "./mcp-auth.js";
 import { BinanceMCPClient } from "./mcp-client.js";
@@ -110,7 +111,7 @@ async function main() {
       const reply = await llmAdapter.chat(userPrompt);
 
       if (reply) {
-        console.log(`\n${chalk.bold.magenta("Agent:")}\n${reply}\n`);
+        console.log(`\n${chalk.bold.magenta("Agent:")}\n${formatTerminalResponse(reply)}\n`);
       }
     } catch (err: any) {
       console.error(chalk.red(`\nError: ${err.message}\n`));
