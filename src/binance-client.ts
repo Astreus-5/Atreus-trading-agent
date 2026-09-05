@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { TechnicalAnalysis } from "./indicators.js";
 
 /**
  * Represents 24-hour ticker statistics for a trading pair.
@@ -626,6 +627,160 @@ export class BinanceClient {
       throw new Error(`Order cancellation failed: ${err}`);
     }
     return await res.json();
+  }
+
+  /**
+   * Retrieves active position risk & liquidation information for USDS-M Futures.
+   * If symbol is omitted, returns all positions with non-zero positionAmt.
+   */
+  async getFuturesPositions(symbol?: string): Promise<any[]> {
+    if (!this.hasKeys()) return [];
+    const ts = Date.now();
+    let query = `timestamp=${ts}`;
+    if (symbol) query = `symbol=${symbol.toUpperCase()}&${query}`;
+    const sig = this.sign(query);
+
+    const res = await fetch(`${this.futuresBaseUrl}/fapi/v2/positionRisk?${query}&signature=${sig}`, {
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to fetch futures positions: ${err}`);
+    }
+    const data = (await res.json()) as any[];
+    if (!Array.isArray(data)) return [];
+
+    if (symbol) {
+      return data;
+    }
+    const active = data.filter((p: any) => parseFloat(p.positionAmt) !== 0);
+    return active;
+  }
+
+  /**
+   * Retrieves recent trade execution fills, fees, and realized transactions for a given symbol on Spot.
+   */
+  async getMyTrades(symbol: string, limit = 10): Promise<any[]> {
+    if (!this.hasKeys()) return [];
+    const ts = Date.now();
+    const query = `symbol=${symbol.toUpperCase()}&limit=${limit}&timestamp=${ts}`;
+    const sig = this.sign(query);
+
+    const res = await fetch(`${this.spotBaseUrl}/api/v3/myTrades?${query}&signature=${sig}`, {
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to fetch trades for ${symbol}: ${err}`);
+    }
+    const trades = (await res.json()) as any[];
+    return trades.map((t: any) => ({
+      symbol: t.symbol,
+      orderId: t.orderId,
+      tradeId: t.id,
+      side: t.isBuyer ? "BUY" : "SELL",
+      price: t.price,
+      quantity: t.qty,
+      notional: t.quoteQty,
+      commission: t.commission,
+      commissionAsset: t.commissionAsset,
+      isMaker: t.isMaker,
+      time: new Date(t.time).toISOString(),
+    }));
+  }
+
+  /**
+   * Configures matching-engine initial leverage for a USDS-M perpetual contract (1x-5x).
+   */
+  async setFuturesLeverage(symbol: string, leverage: number): Promise<any> {
+    if (!this.hasKeys()) throw new Error("API credentials required to set leverage");
+    const roundedLeverage = Math.max(1, Math.min(5, Math.floor(leverage)));
+    const ts = Date.now();
+    const query = `symbol=${symbol.toUpperCase()}&leverage=${roundedLeverage}&timestamp=${ts}`;
+    const sig = this.sign(query);
+
+    const res = await fetch(`${this.futuresBaseUrl}/fapi/v1/leverage?${query}&signature=${sig}`, {
+      method: "POST",
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to set leverage on Binance: ${err}`);
+    }
+    return await res.json();
+  }
+
+  /**
+   * Generates a comprehensive token AI intelligence dossier combining Binance market metrics,
+   * 24h stats, order book depth liquidity, and technical indicators.
+   */
+  async getTokenAiReport(token: string): Promise<any> {
+    const asset = token.toUpperCase().replace(/USDT$/, "");
+    const symbol = `${asset}USDT`;
+
+    const [tickerRes, depthRes, klinesRes] = await Promise.allSettled([
+      this.getSpotTicker(symbol),
+      this.getSpotOrderBook(symbol, 10),
+      this.getKlines(symbol, "1h", 30),
+    ]);
+
+    const ticker = tickerRes.status === "fulfilled" ? tickerRes.value : null;
+    const depth = depthRes.status === "fulfilled" ? depthRes.value : null;
+    const klines = klinesRes.status === "fulfilled" ? klinesRes.value : [];
+
+    let technicals: any = null;
+    if (klines.length >= 14) {
+      const closePrices = klines.map((k: any) => parseFloat(k.close));
+      const rsi = TechnicalAnalysis.calculateRSI(closePrices, 14);
+      const sma7 = TechnicalAnalysis.calculateSMA(closePrices, 7);
+      const sma25 = TechnicalAnalysis.calculateSMA(closePrices, 25);
+
+      technicals = {
+        timeframe: "1h",
+        rsi14: rsi,
+        rsiCondition: rsi > 70 ? "OVERBOUGHT" : rsi < 30 ? "OVERSOLD" : "NEUTRAL",
+        trend: sma7 > sma25 ? "BULLISH_CROSS (SMA7 > SMA25)" : "BEARISH_CROSS (SMA7 < SMA25)",
+        sma7,
+        sma25,
+      };
+    }
+
+    let liquidityProfile: any = null;
+    if (depth && depth.bids && depth.asks) {
+      const bidVol = depth.bids.reduce((sum: number, b: any) => sum + parseFloat(b[1]), 0);
+      const askVol = depth.asks.reduce((sum: number, a: any) => sum + parseFloat(a[1]), 0);
+      const totalVol = bidVol + askVol;
+      const bidRatio = totalVol > 0 ? (bidVol / totalVol) * 100 : 50;
+      liquidityProfile = {
+        top10BidVolume: parseFloat(bidVol.toFixed(4)),
+        top10AskVolume: parseFloat(askVol.toFixed(4)),
+        bidPressurePct: `${bidRatio.toFixed(1)}%`,
+        orderBookBias: bidRatio > 55 ? "BUY_DOMINANT" : bidRatio < 45 ? "SELL_DOMINANT" : "BALANCED",
+      };
+    }
+
+    return {
+      token: asset,
+      tradingPair: symbol,
+      timestamp: new Date().toISOString(),
+      marketSnapshot: ticker ? {
+        price: ticker.price,
+        priceChange24h: `${ticker.priceChangePercent}%`,
+        high24h: ticker.highPrice,
+        low24h: ticker.lowPrice,
+        volume24hUsd: ticker.volume,
+      } : "Not available",
+      liquidityProfile,
+      technicals,
+      aiAnalysis: {
+        momentumSentiment: technicals ? (technicals.trend.includes("BULLISH") ? "BULLISH" : "BEARISH") : "NEUTRAL",
+        riskAssessment: technicals && technicals.rsiCondition === "OVERSOLD"
+          ? "RSI oversold. Potential mean-reversion bounce opportunity."
+          : technicals && technicals.rsiCondition === "OVERBOUGHT"
+          ? "RSI overbought. Elevated risk of near-term pullback."
+          : "Momentum indicators in healthy equilibrium range.",
+      },
+    };
   }
 }
 

@@ -253,6 +253,63 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_futures_positions",
+      description: "Binance Futures Tool: Inspects active USDS-M perpetual positions, entry price, liquidation price, mark price, leverage, and real-time unrealized PnL.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: { type: "string", description: "Optional trading pair (e.g. BTCUSDT, ETHUSDT). If omitted, returns all currently open active positions." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_my_trades",
+      description: "Binance Trade History & Journaling: Fetches historical executed trades, fill prices, quantities, and actual commission fees paid for a given symbol on Spot.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: { type: "string", description: "Trading pair symbol, e.g. BNBUSDT, BTCUSDT, ETHUSDT" },
+          limit: { type: "number", description: "Maximum number of recent trades to fetch (default: 10, max: 100)" },
+        },
+        required: ["symbol"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "set_futures_leverage",
+      description: "Binance Futures Tool: Configures initial leverage (1x to 5x max, governed by RiskGuard) for a USDS-M perpetual pair directly on Binance's matching engine.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: { type: "string", description: "Perpetual trading pair symbol, e.g. BTCUSDT, ETHUSDT" },
+          leverage: { type: "number", description: "Target leverage multiplier (integer from 1 to 5)" },
+        },
+        required: ["symbol", "leverage"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_token_ai_report",
+      description: "Binance AI Token Intelligence: Generates an institutional-grade research dossier for a token combining 24h market stats, order book depth liquidity pressure, RSI/SMA technical momentum, and AI risk assessment.",
+      parameters: {
+        type: "object",
+        properties: {
+          token: { type: "string", description: "Token symbol to analyze, e.g. BTC, ETH, BNB, SOL" },
+        },
+        required: ["token"],
+      },
+    },
+  },
 ];
 
 export async function executeAgentTool(
@@ -374,6 +431,26 @@ export async function executeAgentTool(
 
     case "execute_binance_skill":
       return await BinanceSkillsRunner.executeSkill(args.skillName, args.command, args.params ?? {});
+
+    case "get_futures_positions":
+      return await client.getFuturesPositions(args.symbol);
+
+    case "get_my_trades":
+      return await client.getMyTrades(args.symbol, args.limit ?? 10);
+
+    case "set_futures_leverage": {
+      const maxAllowed = riskGuard.getConfig().maxLeverage;
+      if (args.leverage > maxAllowed) {
+        return {
+          status: "REJECTED_BY_RISK_GUARD",
+          error: `Leverage ${args.leverage}x exceeds maximum allowed leverage of ${maxAllowed}x.`,
+        };
+      }
+      return await client.setFuturesLeverage(args.symbol, args.leverage);
+    }
+
+    case "get_token_ai_report":
+      return await client.getTokenAiReport(args.token);
 
     default:
       return { error: `Unknown tool: ${name}` };
