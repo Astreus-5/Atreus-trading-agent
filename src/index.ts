@@ -8,9 +8,20 @@ import { getSystemPrompt } from "./prompt.js";
 import { MultiLLMAdapter } from "./llm-provider.js";
 import { formatTerminalResponse } from "./formatter.js";
 import { setSharedReadline } from "./confirmation.js";
+import { envExists, runSetupWizard } from "./setup.js";
 
 import { BinanceMCPAuth } from "./mcp-auth.js";
 import { BinanceMCPClient } from "./mcp-client.js";
+
+// ── First-Run Setup Wizard ──────────────────────────────────────────────────
+// If .env doesn't exist or Binance keys aren't configured, walk the user
+// through an interactive setup before booting the agent.
+if (!envExists()) {
+  await runSetupWizard();
+  // Reload env after wizard writes .env
+  const { config } = await import("dotenv");
+  config({ override: true });
+}
 
 async function main() {
   // ── CLI Flag: --mcp-auth triggers the one-time Binance OAuth PKCE flow ────
