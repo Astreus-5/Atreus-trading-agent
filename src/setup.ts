@@ -18,6 +18,19 @@ export function isConfiguredContent(content: string): boolean {
 }
 
 export function envExists(): boolean {
+  // 1. If an official Binance MCP OAuth token is stored, check if any LLM key is configured
+  const tokenPath = path.resolve(process.cwd(), ".binance-token.json");
+  if (fs.existsSync(tokenPath) && fs.existsSync(ENV_PATH)) {
+    const content = fs.readFileSync(ENV_PATH, "utf-8");
+    const hasLLM =
+      (content.includes("ANTHROPIC_API_KEY=") && !content.includes("sk-ant-...")) ||
+      (content.includes("OPENAI_API_KEY=") && !content.includes("sk-proj-...")) ||
+      (content.includes("GOOGLE_API_KEY=") && !content.includes("AIzaSy...")) ||
+      (content.includes("OPENROUTER_API_KEY=") && !content.includes("sk-or-v1-..."));
+    if (hasLLM) return true;
+  }
+
+  // 2. Standard check: ensure .env exists and has valid Binance REST subaccount keys
   if (!fs.existsSync(ENV_PATH)) return false;
   const content = fs.readFileSync(ENV_PATH, "utf-8");
   return isConfiguredContent(content);
