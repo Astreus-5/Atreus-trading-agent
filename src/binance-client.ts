@@ -592,6 +592,35 @@ export class BinanceClient {
   }
 
   /**
+   * Transfers funds internally between Spot and USDS-M Futures wallets within the sub-account.
+   */
+  async transferWallet(asset: string, amount: number, direction: "SPOT_TO_FUTURES" | "FUTURES_TO_SPOT"): Promise<any> {
+    if (!this.hasKeys()) throw new Error("API credentials required for wallet transfer");
+    const ts = Date.now();
+    const type = direction === "SPOT_TO_FUTURES" ? 1 : 2;
+    const query = `asset=${asset.toUpperCase()}&amount=${amount}&type=${type}&recvWindow=60000&timestamp=${ts}`;
+    const sig = this.sign(query);
+
+    const res = await fetch(`${this.spotBaseUrl}/sapi/v1/futures/transfer?${query}&signature=${sig}`, {
+      method: "POST",
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Wallet transfer failed: ${err}`);
+    }
+    const data = (await res.json()) as any;
+    return {
+      status: "SUCCESS",
+      action: "INTERNAL_WALLET_TRANSFER",
+      asset: asset.toUpperCase(),
+      amount,
+      direction,
+      transferId: data.tranId,
+    };
+  }
+
+  /**
    * Retrieves active open limit orders across Spot markets.
    */
   async getOpenOrders(symbol?: string): Promise<any[]> {

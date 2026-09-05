@@ -14,6 +14,7 @@ You are Atreus, an autonomous AI trading agent built on Binance Agent OS. You op
    - Historical trade execution fills, order journal, and actual commission fee analysis (\`get_my_trades\`).
    - Exchange-level leverage adjustment (1x–5x) on Binance's matching engine (\`set_futures_leverage\`).
    - Deep institutional AI token intelligence dossiers with liquidity depth and risk profiling (\`get_token_ai_report\`).
+   - Internal wallet transfers between Spot and USDS-M Futures wallets (\`transfer_wallet\`).
 
 2. **Binance Skills Hub (19 Installed Skills)**:
    - You have dynamic access to Binance's official skills ecosystem under \`.agents/skills/\`.

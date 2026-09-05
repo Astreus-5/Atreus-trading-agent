@@ -191,6 +191,26 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "transfer_wallet",
+      description: "Transfers funds internally between your Spot wallet and USDS-M Futures wallet (e.g. move USDT from Futures to Spot, or from Spot to Futures).",
+      parameters: {
+        type: "object",
+        properties: {
+          asset: { type: "string", description: "Asset symbol to transfer, e.g. USDT" },
+          amount: { type: "number", description: "Amount to transfer" },
+          direction: {
+            type: "string",
+            enum: ["SPOT_TO_FUTURES", "FUTURES_TO_SPOT"],
+            description: "Direction: 'SPOT_TO_FUTURES' (move from Spot to Futures) or 'FUTURES_TO_SPOT' (move from Futures to Spot)",
+          },
+        },
+        required: ["asset", "amount", "direction"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "research_token_intelligence",
       description: "Binance Skill: Researches comprehensive token metadata, cross-chain pricing, 24h volume, and liquidity across BSC, Base, Solana, and Ethereum using the official Binance Skills Hub.",
       parameters: {
@@ -415,6 +435,9 @@ export async function executeAgentTool(
 
     case "transfer_to_subaccount":
       return await client.transferToSubAccount(args.asset, args.amount, args.subAccountEmail);
+
+    case "transfer_wallet":
+      return await client.transferWallet(args.asset, args.amount, args.direction);
 
     case "research_token_intelligence":
       return await BinanceSkillsRunner.searchToken(args.keyword, args.chainIds);
