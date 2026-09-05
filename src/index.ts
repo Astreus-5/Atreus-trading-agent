@@ -112,6 +112,8 @@ async function main() {
 
       if (reply) {
         console.log(`\n${chalk.bold.magenta("Agent:")}\n${formatTerminalResponse(reply)}\n`);
+      } else {
+        console.log(chalk.yellow("\n[Notice] No response returned by model. Please retry.\n"));
       }
     } catch (err: any) {
       console.error(chalk.red(`\nError: ${err.message}\n`));
