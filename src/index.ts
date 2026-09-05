@@ -116,6 +116,9 @@ async function main() {
         console.log(chalk.yellow("\n[Notice] No response returned by model. Please retry.\n"));
       }
     } catch (err: any) {
+      if (err?.code === "ERR_USE_AFTER_CLOSE" || err?.message?.includes("closed") || err?.message?.includes("EOF")) {
+        break;
+      }
       console.error(chalk.red(`\nError: ${err.message}\n`));
     }
   }
