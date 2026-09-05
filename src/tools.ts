@@ -2,7 +2,7 @@ import "dotenv/config";
 import OpenAI from "openai";
 import { BinanceClient } from "./binance-client.js";
 import { TechnicalAnalysis } from "./indicators.js";
-import { RiskGuard, TradeProposal } from "./risk.js";
+import { RiskGuard, TradeProposal, calculatePosition, calculateExitTargets } from "./risk.js";
 import { requireHumanConfirmation } from "./confirmation.js";
 import { BinanceSkillsRunner } from "./skills-runner.js";
 
@@ -112,14 +112,17 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
         type: "object",
         properties: {
           product: { type: "string", enum: ["SPOT", "USDS-M FUTURES", "COIN-M FUTURES"], description: "Market product" },
-          symbol: { type: "string", description: "Trading symbol, e.g. BTCUSDT, ETHUSDT, BNBUSDT" },
+          symbol: { type: "string", description: "Trading symbol, e.g. BTCUSDT, ETHUSDT, SOLUSDT" },
           side: { type: "string", enum: ["BUY", "SELL"], description: "Order direction" },
           orderType: { type: "string", enum: ["MARKET", "LIMIT"], description: "Order execution type" },
-          quantity: { type: "number", description: "Asset quantity" },
-          notionalUsd: { type: "number", description: "Estimated USD trade value" },
-          price: { type: "number", description: "Limit price (if LIMIT order)" },
-          leverage: { type: "number", description: "Futures leverage (1-5x)" },
+          quantity: { type: "number", description: "Asset quantity (calculated as notionalUsd / price)" },
+          notionalUsd: { type: "number", description: "Total position notional value in USD (marginUsd * leverage)" },
+          marginUsd: { type: "number", description: "Initial margin collateral allocated to the position (for Spot = notionalUsd; for Futures = notionalUsd / leverage)" },
+          availableMargin: { type: "number", description: "Current available margin in wallet before trade" },
+          price: { type: "number", description: "Estimated entry price or limit price" },
+          leverage: { type: "number", description: "Futures leverage multiplier (1-5x, default 1 for Spot)" },
           stopLossPrice: { type: "number", description: "Mandatory stop loss price for leveraged positions" },
+          takeProfitPrice: { type: "number", description: "Take profit price target" },
         },
         required: ["product", "symbol", "side", "orderType", "quantity", "notionalUsd"],
       },
@@ -376,6 +379,10 @@ export async function executeAgentTool(
       return await client.getAccountBalances();
 
     case "submit_trade_order": {
+      const isFutures = args.product !== "SPOT";
+      const leverage = isFutures ? (args.leverage ?? 1) : 1;
+      const marginUsd = args.marginUsd ?? (isFutures && leverage > 1 ? args.notionalUsd / leverage : args.notionalUsd);
+
       const proposal: TradeProposal = {
         product: args.product,
         symbol: args.symbol,
@@ -383,16 +390,37 @@ export async function executeAgentTool(
         orderType: args.orderType,
         quantity: args.quantity,
         notionalUsd: args.notionalUsd,
+        availableMargin: args.availableMargin,
+        marginUsd: Number(marginUsd.toFixed(4)),
         price: args.price,
         leverage: args.leverage,
         stopLossPrice: args.stopLossPrice,
+        takeProfitPrice: args.takeProfitPrice,
       };
 
       // Dynamically fetch or calculate current balance for risk evaluation
-      const balanceToEvaluate = accountBalance ?? 1000;
+      let balanceToEvaluate = accountBalance;
+      if (balanceToEvaluate === undefined && client.hasKeys()) {
+        try {
+          const balances = await client.getAccountBalances();
+          if (isFutures) {
+            const futUsdt = balances.futuresBalances?.find((b: any) => b.asset === "USDT");
+            if (futUsdt) balanceToEvaluate = parseFloat(futUsdt.free);
+          } else {
+            const spotUsdt = balances.spotBalances?.find((b: any) => b.asset === "USDT");
+            if (spotUsdt) balanceToEvaluate = parseFloat(spotUsdt.free);
+          }
+        } catch {}
+      }
+      if (balanceToEvaluate === undefined) {
+        balanceToEvaluate = args.availableMargin ?? 1000;
+      }
+      if (proposal.availableMargin === undefined) {
+        proposal.availableMargin = balanceToEvaluate;
+      }
 
       // 1. Run Pre-trade Risk Audit
-      const riskResult = riskGuard.validate(proposal, balanceToEvaluate);
+      const riskResult = riskGuard.validate(proposal, balanceToEvaluate ?? 1000);
       if (!riskResult.passed) {
         return {
           status: "REJECTED_BY_RISK_GUARD",

@@ -27,6 +27,9 @@ export function getSharedReadline(): readline.Interface {
 export async function requireHumanConfirmation(proposal: TradeProposal): Promise<boolean> {
   const sideColor = proposal.side === "BUY" ? chalk.bold.green : chalk.bold.red;
   const isFutures = proposal.product !== "SPOT";
+  const leverage = isFutures ? (proposal.leverage ?? 1) : 1;
+  const allocatedMargin = proposal.marginUsd ?? (isFutures && leverage > 1 ? proposal.notionalUsd / leverage : proposal.notionalUsd);
+  const assetUnit = proposal.symbol.replace(/USDT|BUSD|USDC/g, "");
 
   const confirmBtn = chalk.bgGreen.black.bold(" [ 1 ]  ✅  CONFIRM & EXECUTE ");
   const cancelBtn  = chalk.bgRed.white.bold(" [ 2 ]  ❌  CANCEL & ABORT    ");
@@ -37,12 +40,24 @@ ${chalk.bold.yellow("⚠ TRADE PROPOSAL — HUMAN AUTHORIZATION REQUIRED")}
 ${chalk.cyan("Product / Market :")} ${chalk.bold.white(proposal.product)}
 ${chalk.cyan("Trading Pair     :")} ${chalk.bold.white(proposal.symbol)}
 ${chalk.cyan("Action / Side    :")} ${sideColor(proposal.side)}
-${chalk.cyan("Order Type       :")} ${proposal.orderType} ${proposal.price ? `(@ $${proposal.price})` : "(MARKET)"}
-${chalk.cyan("Quantity         :")} ${proposal.quantity}
-${chalk.cyan("Notional Value   :")} ~$${proposal.notionalUsd.toFixed(2)} USD
-${isFutures ? `${chalk.cyan("Leverage         :")} ${proposal.leverage ?? 1}×\n` : ""}${
-    proposal.stopLossPrice ? `${chalk.cyan("Stop-Loss Target :")} $${proposal.stopLossPrice}\n` : ""
-  }
+${chalk.cyan("Order Type       :")} ${proposal.orderType} ${proposal.price ? `(@ $${proposal.price.toLocaleString()})` : "(MARKET)"}
+${proposal.availableMargin !== undefined ? `${chalk.cyan("Available Margin :")} $${proposal.availableMargin.toFixed(2)} USDT\n` : ""}${
+  isFutures ? `${chalk.cyan("Allocated Margin :")} $${allocatedMargin.toFixed(2)} USDT\n` : ""
+}${isFutures ? `${chalk.cyan("Leverage         :")} ${leverage}×\n` : ""}${
+  chalk.cyan("Position Notional:")
+} ~$${proposal.notionalUsd.toFixed(2)} USD
+${chalk.cyan("Asset Quantity   :")} ${proposal.quantity} ${assetUnit}
+${
+  proposal.price ? `${chalk.cyan("Entry Price Est. :")} $${proposal.price.toLocaleString()}\n` : ""
+}${
+  proposal.stopLossPrice
+    ? `${chalk.cyan("Stop-Loss Target :")} $${proposal.stopLossPrice.toLocaleString()}${proposal.price ? ` (${Math.abs(((proposal.price - proposal.stopLossPrice) / proposal.price) * 100).toFixed(2)}% distance)` : ""}\n`
+    : ""
+}${
+  proposal.takeProfitPrice
+    ? `${chalk.cyan("Take-Profit Target:")} $${proposal.takeProfitPrice.toLocaleString()}${proposal.price ? ` (${Math.abs(((proposal.takeProfitPrice - proposal.price) / proposal.price) * 100).toFixed(2)}% target)` : ""}\n`
+    : ""
+}
 ${confirmBtn}   ${chalk.dim("press  1  or  Y")}
 ${cancelBtn}   ${chalk.dim("press  2  or  N")}
 `.trim();

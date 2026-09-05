@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { RiskGuard, TradeProposal } from "../src/risk.js";
+import { RiskGuard, TradeProposal, calculatePosition, calculateExitTargets } from "../src/risk.js";
 
 describe("RiskGuard Unit Tests", () => {
   test("allows trade within 5% position size", () => {
@@ -81,5 +81,59 @@ describe("RiskGuard Unit Tests", () => {
     const result = guard.validate(proposal, 890);
     assert.equal(result.passed, false);
     assert.match(result.violations[0], /Daily loss threshold reached/);
+  });
+});
+
+describe("calculatePosition – leverage-aware sizing", () => {
+  test("notional = allocatedMargin × leverage (2× example)", () => {
+    const result = calculatePosition({
+      availableMargin: 7.916,
+      marginToUse: 7.916,
+      leverage: 2,
+      entryPrice: 80000,
+    });
+    assert.ok(Math.abs(result.notionalUsd - 15.832) < 0.001, "notional should be 15.832");
+    assert.equal(result.leverage, 2);
+    assert.equal(result.allocatedMargin, 7.916);
+  });
+
+  test("quantity = notionalUsd / entryPrice", () => {
+    const result = calculatePosition({
+      availableMargin: 7.916,
+      marginToUse: 7.916,
+      leverage: 2,
+      entryPrice: 80000,
+    });
+    const expected = 15.832 / 80000; // ~0.00019790
+    assert.ok(Math.abs(result.quantity - expected) < 1e-8, `qty should be ~${expected}`);
+  });
+
+  test("spot (1× leverage) notional equals margin", () => {
+    const result = calculatePosition({
+      availableMargin: 100,
+      marginToUse: 100,
+      leverage: 1,
+      entryPrice: 50000,
+    });
+    assert.equal(result.notionalUsd, 100);
+    assert.ok(Math.abs(result.quantity - 0.002) < 1e-8);
+  });
+});
+
+describe("calculateExitTargets – SL/TP from entry price", () => {
+  test("long: stopLoss below entry, takeProfit above entry", () => {
+    const targets = calculateExitTargets(80000, "BUY", 2, 4);
+    assert.ok(targets.stopLossPrice < 80000, "SL must be below entry for longs");
+    assert.ok(targets.takeProfitPrice > 80000, "TP must be above entry for longs");
+    assert.ok(Math.abs(targets.stopLossPrice - 78400) < 1, "SL ~78400 (2% below)");
+    assert.ok(Math.abs(targets.takeProfitPrice - 83200) < 1, "TP ~83200 (4% above)");
+  });
+
+  test("short: stopLoss above entry, takeProfit below entry", () => {
+    const targets = calculateExitTargets(80000, "SELL", 2, 4);
+    assert.ok(targets.stopLossPrice > 80000, "SL must be above entry for shorts");
+    assert.ok(targets.takeProfitPrice < 80000, "TP must be below entry for shorts");
+    assert.ok(Math.abs(targets.stopLossPrice - 81600) < 1, "SL ~81600 (2% above)");
+    assert.ok(Math.abs(targets.takeProfitPrice - 76800) < 1, "TP ~76800 (4% below)");
   });
 });

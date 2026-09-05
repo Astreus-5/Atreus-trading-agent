@@ -24,9 +24,103 @@ export interface TradeProposal {
   orderType: "MARKET" | "LIMIT";
   quantity: number;
   notionalUsd: number;
+  availableMargin?: number;
+  marginUsd?: number;
   leverage?: number;
   price?: number;
   stopLossPrice?: number;
+  takeProfitPrice?: number;
+}
+
+/**
+ * Parameters for sizing a trade position.
+ */
+export interface PositionSizingInput {
+  availableMargin: number;
+  marginToUse?: number;
+  notionalTargetUsd?: number;
+  leverage?: number;
+  entryPrice: number;
+  isFutures?: boolean;
+  maxPositionPct?: number;
+}
+
+/**
+ * Calculated breakdown of margin, leverage, notional position, and asset quantity.
+ */
+export interface PositionSizingResult {
+  availableMargin: number;
+  allocatedMargin: number;
+  leverage: number;
+  notionalUsd: number;
+  quantity: number;
+  entryPrice: number;
+}
+
+/**
+ * Calculates position sizing distinguishing available margin, allocated margin, leverage, notional value, and quantity.
+ */
+export function calculatePosition(params: PositionSizingInput): PositionSizingResult {
+  const leverage = Math.max(1, params.leverage ?? 1);
+  const availableMargin = Math.max(0, params.availableMargin);
+
+  let allocatedMargin: number;
+
+  if (params.marginToUse !== undefined && params.marginToUse > 0) {
+    allocatedMargin = Math.min(params.marginToUse, availableMargin);
+  } else if (params.notionalTargetUsd !== undefined && params.notionalTargetUsd > 0) {
+    allocatedMargin = Math.min(params.notionalTargetUsd / leverage, availableMargin);
+  } else if (params.maxPositionPct !== undefined && params.maxPositionPct > 0) {
+    allocatedMargin = (availableMargin * params.maxPositionPct) / 100;
+  } else {
+    allocatedMargin = availableMargin;
+  }
+
+  const notionalUsd = Number((allocatedMargin * leverage).toFixed(4));
+  const quantity = params.entryPrice > 0 ? Number((notionalUsd / params.entryPrice).toFixed(8)) : 0;
+
+  return {
+    availableMargin,
+    allocatedMargin: Number(allocatedMargin.toFixed(4)),
+    leverage,
+    notionalUsd,
+    quantity,
+    entryPrice: params.entryPrice,
+  };
+}
+
+/**
+ * Target price levels for risk management and profit taking.
+ */
+export interface ExitTargets {
+  stopLossPrice: number;
+  takeProfitPrice: number;
+  stopLossPct: number;
+  takeProfitPct: number;
+}
+
+/**
+ * Calculates stop-loss and take-profit prices strictly based on the actual entry price and order side.
+ */
+export function calculateExitTargets(
+  entryPrice: number,
+  side: "BUY" | "SELL" = "BUY",
+  stopLossPct = 2,
+  takeProfitPct = 4
+): ExitTargets {
+  if (entryPrice <= 0) {
+    return { stopLossPrice: 0, takeProfitPrice: 0, stopLossPct, takeProfitPct };
+  }
+
+  if (side === "BUY") {
+    const stopLossPrice = Number((entryPrice * (1 - stopLossPct / 100)).toFixed(2));
+    const takeProfitPrice = Number((entryPrice * (1 + takeProfitPct / 100)).toFixed(2));
+    return { stopLossPrice, takeProfitPrice, stopLossPct, takeProfitPct };
+  } else {
+    const stopLossPrice = Number((entryPrice * (1 + stopLossPct / 100)).toFixed(2));
+    const takeProfitPrice = Number((entryPrice * (1 - takeProfitPct / 100)).toFixed(2));
+    return { stopLossPrice, takeProfitPrice, stopLossPct, takeProfitPct };
+  }
 }
 
 /**
@@ -89,24 +183,40 @@ export class RiskGuard {
       violations.push("❌ Invalid asset quantity.");
     }
 
-    // 0. Binance Minimum Order Size Check (5 USDT minimum to open positions)
+    const isFutures = proposal.product !== "SPOT";
+    const leverage = isFutures ? (proposal.leverage ?? 1) : 1;
+    const allocatedMargin = proposal.marginUsd ?? (isFutures && leverage > 1 ? proposal.notionalUsd / leverage : proposal.notionalUsd);
+
+    // 0. Margin Balance Invariant: Allocated margin cannot exceed available balance
+    if (allocatedMargin > currentBalance) {
+      violations.push(
+        `❌ Allocated margin $${allocatedMargin.toFixed(2)} exceeds available balance of $${currentBalance.toFixed(2)} USDT.`
+      );
+    }
+
+    // 1. Binance Minimum Order Size Check (5 USDT minimum to open positions)
     if (proposal.side === "BUY" && proposal.notionalUsd < this.config.minNotionalUsd) {
       violations.push(
         `❌ Binance enforces a minimum trade value of $${this.config.minNotionalUsd.toFixed(2)} USDT for opening positions. Please increase your order amount or top up your account balance.`
       );
     }
 
-    // 1. Check Position Size
-    const maxAllowedNotional = (currentBalance * this.config.maxPositionPct) / 100;
+    // 2. Check Position Size limit
+    const standardMaxNotional = (currentBalance * this.config.maxPositionPct) / 100;
+    // For small accounts where balance * maxPositionPct < minNotional, allow up to minNotional if within balance
+    const maxAllowedNotional = Math.max(
+      standardMaxNotional,
+      currentBalance <= this.config.minNotionalUsd * 2 ? this.config.minNotionalUsd * leverage : standardMaxNotional
+    );
+
     if (proposal.notionalUsd > maxAllowedNotional) {
       violations.push(
-        `❌ Position size $${proposal.notionalUsd.toFixed(2)} exceeds allowed limit of $${maxAllowedNotional.toFixed(2)} (${this.config.maxPositionPct}% of $${currentBalance.toFixed(2)} balance).`
+        `❌ Position size $${proposal.notionalUsd.toFixed(2)} exceeds allowed limit of $${standardMaxNotional.toFixed(2)} (${this.config.maxPositionPct}% of $${currentBalance.toFixed(2)} balance).`
       );
     }
 
-    // 2. Check Leverage & Mandatory Stop-Loss for Futures
-    const leverage = proposal.leverage ?? 1;
-    if (proposal.product !== "SPOT") {
+    // 3. Check Leverage & Mandatory Stop-Loss for Futures
+    if (isFutures) {
       if (leverage > this.config.maxLeverage) {
         violations.push(
           `❌ Leverage ${leverage}× exceeds maximum allowed leverage of ${this.config.maxLeverage}×.`
@@ -131,7 +241,7 @@ export class RiskGuard {
       }
     }
 
-    // 3. Check Daily Loss Limit
+    // 4. Check Daily Loss Limit
     if (this.startingBalance && this.startingBalance > 0) {
       const maxDailyLoss = (this.startingBalance * this.config.dailyLossLimitPct) / 100;
       if (this.dailyPnl < -maxDailyLoss) {
