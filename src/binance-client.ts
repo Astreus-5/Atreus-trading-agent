@@ -67,28 +67,45 @@ export class BinanceClient {
     return Boolean(this.apiKey && this.apiSecret);
   }
 
-  private stepSizeCache = new Map<string, number>();
+  private lotFilterCache = new Map<string, { stepSize: number; minQty: number; minNotional: number }>();
+
+  /**
+   * Dynamically retrieves exchange LOT_SIZE and MIN_NOTIONAL filters for Spot or Futures pairs.
+   */
+  public async getLotFilter(symbol: string, isFutures = false): Promise<{ stepSize: number; minQty: number; minNotional: number }> {
+    const sym = symbol.toUpperCase();
+    const cacheKey = `${isFutures ? "FUT_" : "SPOT_"}${sym}`;
+    if (this.lotFilterCache.has(cacheKey)) return this.lotFilterCache.get(cacheKey)!;
+
+    try {
+      const url = isFutures
+        ? `${this.futuresBaseUrl}/fapi/v1/exchangeInfo`
+        : `${this.spotBaseUrl}/api/v3/exchangeInfo?symbol=${sym}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data: any = await res.json();
+        const s = isFutures ? data.symbols?.find((x: any) => x.symbol === sym) : data.symbols?.[0];
+        if (s) {
+          const lotFilter = s.filters?.find((f: any) => f.filterType === "LOT_SIZE" || f.filterType === "MARKET_LOT_SIZE");
+          const notionalFilter = s.filters?.find((f: any) => f.filterType === "MIN_NOTIONAL" || f.filterType === "NOTIONAL");
+          const stepSize = lotFilter?.stepSize ? parseFloat(lotFilter.stepSize) : (isFutures ? 0.001 : 0.00001);
+          const minQty = lotFilter?.minQty ? parseFloat(lotFilter.minQty) : stepSize;
+          const minNotional = notionalFilter?.notional ? parseFloat(notionalFilter.notional) : (notionalFilter?.minNotional ? parseFloat(notionalFilter.minNotional) : 5);
+          const result = { stepSize, minQty, minNotional };
+          this.lotFilterCache.set(cacheKey, result);
+          return result;
+        }
+      }
+    } catch {}
+    return { stepSize: isFutures ? 0.001 : 0.00001, minQty: isFutures ? 0.001 : 0.00001, minNotional: 5 };
+  }
 
   /**
    * Dynamically retrieves the exchange LOT_SIZE stepSize filter for any trading pair from Binance.
    */
-  public async getStepSize(symbol: string): Promise<number> {
-    const sym = symbol.toUpperCase();
-    if (this.stepSizeCache.has(sym)) return this.stepSizeCache.get(sym)!;
-
-    try {
-      const res = await fetch(`${this.spotBaseUrl}/api/v3/exchangeInfo?symbol=${sym}`);
-      if (res.ok) {
-        const data: any = await res.json();
-        const lotFilter = data.symbols?.[0]?.filters?.find((f: any) => f.filterType === "LOT_SIZE");
-        if (lotFilter?.stepSize) {
-          const step = parseFloat(lotFilter.stepSize);
-          this.stepSizeCache.set(sym, step);
-          return step;
-        }
-      }
-    } catch {}
-    return 0.001;
+  public async getStepSize(symbol: string, isFutures = false): Promise<number> {
+    const filter = await this.getLotFilter(symbol, isFutures);
+    return filter.stepSize;
   }
 
   /**
@@ -438,9 +455,24 @@ export class BinanceClient {
     if (!isFutures && params.orderType === "MARKET" && params.side === "BUY" && params.notionalUsd && params.notionalUsd > 0) {
       query += `&quoteOrderQty=${params.notionalUsd}`;
     } else {
-      // Dynamically query symbol stepSize filter from Binance exchangeInfo to ensure valid LOT_SIZE
-      const stepSize = await this.getStepSize(params.symbol);
-      const formattedQty = this.formatQuantity(params.quantity, stepSize);
+      // Dynamically query symbol LOT_SIZE & MIN_NOTIONAL filters from Binance exchangeInfo
+      const lotInfo = await this.getLotFilter(params.symbol, isFutures);
+      const formattedQty = this.formatQuantity(params.quantity, lotInfo.stepSize);
+
+      if (formattedQty < lotInfo.minQty) {
+        if (isFutures) {
+          throw new Error(
+            `Binance ${params.symbol} Futures enforces a minimum order size of ${lotInfo.minQty} (${lotInfo.minNotional} USDT minimum notional). ` +
+            `Your requested order of ${params.quantity} (~$${params.notionalUsd ?? 0}) rounds to ${formattedQty}, which is below the contract limit. ` +
+            `For small balances ($5–$20), please trade micro-contract pairs like SOLUSDT, XRPUSDT, or DOGEUSDT which support $5 micro-orders.`
+          );
+        } else {
+          throw new Error(
+            `Order quantity ${params.quantity} for ${params.symbol} is below Binance minimum lot size of ${lotInfo.minQty}.`
+          );
+        }
+      }
+
       query += `&quantity=${formattedQty}`;
     }
 
