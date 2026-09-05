@@ -84,8 +84,19 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "get_account_info",
+      description: "Retrieves live Binance account details: Account UID, account type, canTrade status, canWithdraw permissions, spot balances, and futures balances.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_account_balance",
-      description: "Inspects account balances and available capital across Master Spot, Simple Earn (Flexible Savings), Futures, and Binance Agent OS Agentic Sub-Accounts.",
+      description: "Fetches live account data from the Binance sub-account: UID, account type, canTrade, canWithdraw, spot balances (asset, free, locked), futures balances (asset, walletBalance, availableBalance).",
       parameters: {
         type: "object",
         properties: {},
@@ -255,6 +266,7 @@ export async function executeAgentTool(
     case "get_futures_ticker":
       return await client.getFuturesTicker(args.symbol);
 
+    case "get_account_info":
     case "get_account_balance":
       return await client.getAccountBalances();
 

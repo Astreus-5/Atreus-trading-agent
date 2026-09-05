@@ -185,7 +185,7 @@ export class BinanceClient {
       return {
         status: "AUTHENTICATION_REQUIRED",
         message:
-          "Live Binance API credentials (BINANCE_API_KEY and BINANCE_API_SECRET) are required in .env to inspect private account balances and sub-accounts. Public market data and technical indicators remain fully active.",
+          "Live Binance API credentials (BINANCE_SUB_ACCOUNT_API_KEY and BINANCE_SUB_ACCOUNT_API_SECRET) are required in .env to inspect private account balances. Public market data and technical indicators remain fully active.",
       };
     }
 
@@ -211,8 +211,10 @@ export class BinanceClient {
 
       if (res.ok) {
         const data: any = await res.json();
+        result.uid = data.uid;
         result.accountType = data.accountType;
         result.canTrade = data.canTrade;
+        result.canWithdraw = data.canWithdraw;
         result.masterSpotBalances = (data.balances || [])
           .filter((b: any) => Number(b.free) > 0 || Number(b.locked) > 0)
           .map((b: any) => {
