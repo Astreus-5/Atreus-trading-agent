@@ -397,6 +397,12 @@ export class BinanceClient {
 
     if (!res.ok) {
       const err = await res.text();
+      // If Spot sell order failed due to NOTIONAL filter (< 5 USDT), automatically execute via Binance Convert
+      if (err.includes("NOTIONAL") && !isFutures && params.side === "SELL") {
+        const fromAsset = params.symbol.replace(/USDT$/i, "").toUpperCase();
+        const toAsset = "USDT";
+        return await this.convertTokens(fromAsset, toAsset, params.quantity);
+      }
       throw new Error(`Binance Order submission failed: ${err}`);
     }
 
@@ -409,6 +415,66 @@ export class BinanceClient {
       executedQty: data.executedQty,
       cummulativeQuoteQty: data.cummulativeQuoteQty,
       fills: data.fills,
+    };
+  }
+
+  /**
+   * Instantly converts tokens via Binance Convert with zero fees and no 5 USDT minimum notional filter.
+   */
+  async convertTokens(fromAsset: string, toAsset: string, amount: number): Promise<any> {
+    if (!this.hasKeys()) {
+      throw new Error("Binance API credentials required for conversion.");
+    }
+
+    const ts1 = Date.now();
+    const q1 = `fromAsset=${fromAsset.toUpperCase()}&toAsset=${toAsset.toUpperCase()}&fromAmount=${amount}&timestamp=${ts1}`;
+    const sig1 = this.sign(q1);
+
+    const r1 = await fetch(`${this.spotBaseUrl}/sapi/v1/convert/getQuote`, {
+      method: "POST",
+      headers: {
+        "X-MBX-APIKEY": this.apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `${q1}&signature=${sig1}`,
+    });
+
+    if (!r1.ok) {
+      const err = await r1.text();
+      throw new Error(`Binance Convert quote failed: ${err}`);
+    }
+
+    const quoteData: any = await r1.json();
+    const quoteId = quoteData.quoteId;
+
+    const ts2 = Date.now();
+    const q2 = `quoteId=${quoteId}&timestamp=${ts2}`;
+    const sig2 = this.sign(q2);
+
+    const r2 = await fetch(`${this.spotBaseUrl}/sapi/v1/convert/acceptQuote`, {
+      method: "POST",
+      headers: {
+        "X-MBX-APIKEY": this.apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: `${q2}&signature=${sig2}`,
+    });
+
+    if (!r2.ok) {
+      const err = await r2.text();
+      throw new Error(`Binance Convert accept failed: ${err}`);
+    }
+
+    const acceptData: any = await r2.json();
+    return {
+      mode: "LIVE_BINANCE_AUTHENTICATED",
+      status: "FILLED (BINANCE CONVERT)",
+      orderId: acceptData.orderId || quoteId,
+      symbol: `${fromAsset.toUpperCase()}${toAsset.toUpperCase()}`,
+      executedQty: quoteData.fromAmount,
+      cummulativeQuoteQty: quoteData.toAmount,
+      ratio: quoteData.ratio,
+      type: "CONVERT_ZERO_FEE",
     };
   }
 
