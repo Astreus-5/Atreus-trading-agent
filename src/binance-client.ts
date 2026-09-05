@@ -249,7 +249,27 @@ export class BinanceClient {
         result.uid = data.uid;
         result.accountType = data.accountType;
         result.canTrade = data.canTrade;
-        result.canWithdraw = data.canWithdraw;
+
+        // Query actual API Key permissions directly from Binance
+        try {
+          const apiQuery = `timestamp=${Date.now()}`;
+          const apiSig = this.sign(apiQuery);
+          const apiRes = await fetch(`${this.spotBaseUrl}/sapi/v1/account/apiRestrictions?${apiQuery}&signature=${apiSig}`, {
+            headers: { "X-MBX-APIKEY": this.apiKey },
+          });
+          if (apiRes.ok) {
+            const perms: any = await apiRes.json();
+            result.canWithdraw = perms.enableWithdrawals ?? false;
+            result.apiKeyWithdrawalsAllowed = perms.enableWithdrawals ?? false;
+          } else {
+            result.canWithdraw = false;
+            result.apiKeyWithdrawalsAllowed = false;
+          }
+        } catch {
+          result.canWithdraw = false;
+          result.apiKeyWithdrawalsAllowed = false;
+        }
+
         result.masterSpotBalances = (data.balances || [])
           .filter((b: any) => Number(b.free) > 0 || Number(b.locked) > 0)
           .map((b: any) => {
