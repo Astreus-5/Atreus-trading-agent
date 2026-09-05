@@ -8,6 +8,17 @@ import path from "node:path";
 const ENV_PATH = path.resolve(process.cwd(), ".env");
 
 export function isConfiguredContent(content: string): boolean {
+  // 1. If MCP mode is enabled, only an LLM key is required (MCP uses OAuth token)
+  if (content.includes("ENABLE_BINANCE_MCP=true")) {
+    const hasLLM =
+      (content.includes("ANTHROPIC_API_KEY=") && !content.includes("sk-ant-...")) ||
+      (content.includes("OPENAI_API_KEY=") && !content.includes("sk-proj-...")) ||
+      (content.includes("GOOGLE_API_KEY=") && !content.includes("AIzaSy...")) ||
+      (content.includes("OPENROUTER_API_KEY=") && !content.includes("sk-or-v1-..."));
+    if (hasLLM) return true;
+  }
+
+  // 2. Otherwise ensure Binance REST sub-account keys are configured
   return (
     content.includes("BINANCE_SUB_ACCOUNT_API_KEY=") &&
     !content.includes("BINANCE_SUB_ACCOUNT_API_KEY=your_subaccount_api_key") &&
@@ -135,40 +146,55 @@ export async function runSetupWizard(): Promise<void> {
 
   const modeChoice = await ask(chalk.bold.cyan("Your choice (1/2) [default: 1] > "));
 
+  let binanceKey = "";
+  let binanceSecret = "";
+  let enableMcp = false;
+
   if (modeChoice === "2") {
+    enableMcp = true;
     console.log(
       boxen(
-        `${chalk.bold.yellow("ℹ️  Binance Agent OS MCP Status (Future-Ready)")}\n\n` +
-          `${chalk.white("Binance's OAuth server currently requires custom agent whitelisting.")}\n` +
-          `${chalk.white("The full RFC 7636 PKCE OAuth client is built into Atreus and ready.")}\n\n` +
-          `${chalk.cyan("To activate MCP:")} Run ${chalk.bold.green("npm start -- --mcp-auth")} anytime.\n\n` +
-          `${chalk.dim("To trade immediately today, let's configure your Sub-Account API key below:")}`,
-        { padding: 1, borderStyle: "round", borderColor: "yellow" }
+        `${chalk.bold.green("✓ Binance Agent OS MCP Mode Selected")}\n\n` +
+          `${chalk.white("Atreus will configure for the official Binance Agent OS MCP server.")}\n` +
+          `${chalk.dim("OAuth 2.0 PKCE client & JSON-RPC 2.0 adapter will be activated.")}\n\n` +
+          `${chalk.yellow("Whitelisting Notice:")}\n` +
+          `${chalk.dim("Binance's OAuth server currently requires custom agent whitelisting.")}\n` +
+          `${chalk.cyan("To launch the OAuth login flow:")} Run ${chalk.bold.green("npm start -- --mcp-auth")}\n\n` +
+          `${chalk.green("No Sub-Account API keys required for MCP mode!")}`,
+        { padding: 1, borderStyle: "round", borderColor: "green" }
       )
     );
-  }
 
-  console.log(
-    boxen(
-      `${chalk.bold.yellow("How to get your Binance Sub-Account API Key:")}\n\n` +
-        `${chalk.white("1.")} Log in at ${chalk.cyan.underline("https://binance.com")}\n` +
-        `${chalk.white("2.")} Go to ${chalk.bold("Profile → Sub-Accounts → Create Sub-Account")}\n` +
-        `${chalk.white("3.")} Fund it with a small amount of USDT (min ~$10)\n` +
-        `${chalk.white("4.")} Inside sub-account: ${chalk.bold("API Management → Create API")}\n` +
-        `${chalk.white("5.")} Enable ${chalk.bold.green("Spot Trading")} + ${chalk.bold.green("Futures Trading")} only\n` +
-        `${chalk.white("6.")} ${chalk.bold.red("Leave withdrawals DISABLED")} — this keeps your funds safe\n` +
-        `${chalk.white("7.")} Copy the API Key and Secret Key below`,
-      { padding: 1, borderStyle: "round", borderColor: "cyan" }
-    )
-  );
+    const addBackup = await ask(chalk.cyan("\nDo you also want to add a Sub-Account REST key as a backup? (y/N) [default: N] > "));
+    if (addBackup.toLowerCase() === "y" || addBackup.toLowerCase() === "yes") {
+      console.log(chalk.dim("\n  Paste your Binance backup keys below (masked with * for security):"));
+      binanceKey = await askSecret("Binance Sub-Account API Key");
+      binanceSecret = await askSecret("Binance Sub-Account Secret");
+    }
+  } else {
+    // Mode 1: REST API (Default)
+    console.log(
+      boxen(
+        `${chalk.bold.yellow("How to get your Binance Sub-Account API Key:")}\n\n` +
+          `${chalk.white("1.")} Log in at ${chalk.cyan.underline("https://binance.com")}\n` +
+          `${chalk.white("2.")} Go to ${chalk.bold("Profile → Sub-Accounts → Create Sub-Account")}\n` +
+          `${chalk.white("3.")} Fund it with a small amount of USDT (min ~$10)\n` +
+          `${chalk.white("4.")} Inside sub-account: ${chalk.bold("API Management → Create API")}\n` +
+          `${chalk.white("5.")} Enable ${chalk.bold.green("Spot Trading")} + ${chalk.bold.green("Futures Trading")} only\n` +
+          `${chalk.white("6.")} ${chalk.bold.red("Leave withdrawals DISABLED")} — this keeps your funds safe\n` +
+          `${chalk.white("7.")} Copy the API Key and Secret Key below`,
+        { padding: 1, borderStyle: "round", borderColor: "cyan" }
+      )
+    );
 
-  console.log(chalk.dim("\n  Paste your Binance keys below (masked with * for security):"));
-  const binanceKey = await askSecret("Binance Sub-Account API Key");
-  const binanceSecret = await askSecret("Binance Sub-Account Secret");
+    console.log(chalk.dim("\n  Paste your Binance keys below (masked with * for security):"));
+    binanceKey = await askSecret("Binance Sub-Account API Key");
+    binanceSecret = await askSecret("Binance Sub-Account Secret");
 
-  if (!binanceKey || !binanceSecret) {
-    console.log(chalk.red("\n❌ Binance keys are required. Please run 'npm start' again to retry setup.\n"));
-    process.exit(1);
+    if (!binanceKey || !binanceSecret) {
+      console.log(chalk.red("\n❌ Binance keys are required for REST mode. Please run 'npm start' again to retry setup.\n"));
+      process.exit(1);
+    }
   }
 
   // ── Step 3: Risk defaults ───────────────────────────────────────────────────
@@ -195,8 +221,8 @@ MAX_LEVERAGE=${maxLev}
 STOP_LOSS_PCT=${slPct}
 DAILY_LOSS_LIMIT_PCT=${ddPct}
 
-# Binance MCP Engine (Optional — run with --mcp-auth to activate)
-ENABLE_BINANCE_MCP=false
+# Binance MCP Engine
+ENABLE_BINANCE_MCP=${enableMcp ? "true" : "false"}
 `;
 
   fs.writeFileSync(ENV_PATH, envContent, "utf-8");

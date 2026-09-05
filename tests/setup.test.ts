@@ -20,6 +20,14 @@ BINANCE_SUB_ACCOUNT_API_SECRET=live_subaccount_secret_67890
     assert.strictEqual(isConfiguredContent(valid), true);
   });
 
+  test("isConfiguredContent detects valid MCP mode with LLM key", () => {
+    const validMcp = `
+OPENROUTER_API_KEY=sk-or-v1-validkey
+ENABLE_BINANCE_MCP=true
+`;
+    assert.strictEqual(isConfiguredContent(validMcp), true);
+  });
+
   test("envExists returns true when current real .env is active", () => {
     assert.strictEqual(envExists(), true);
   });
