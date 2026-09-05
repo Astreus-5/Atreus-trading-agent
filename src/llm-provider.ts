@@ -179,7 +179,8 @@ export class MultiLLMAdapter {
         const fnName = toolCall.function.name;
         const fnArgs = JSON.parse(toolCall.function.arguments || "{}");
 
-        console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(fnName)} with ${JSON.stringify(fnArgs)}`));
+        const argSummary = Object.keys(fnArgs).join(", ") || "—";
+        console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(fnName)} { ${argSummary} }`));
         const toolResult = this.mcpClient
           ? await this.mcpClient.executeTool(fnName, fnArgs, this.riskGuard)
           : await executeAgentTool(fnName, fnArgs, this.riskGuard);
@@ -223,7 +224,8 @@ export class MultiLLMAdapter {
       const functionResponses: any[] = [];
 
       for (const call of calls) {
-        console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(call.name)} with ${JSON.stringify(call.args)}`));
+        const argSummary = Object.keys(call.args || {}).join(", ") || "—";
+        console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(call.name)} { ${argSummary} }`));
         const toolResult = this.mcpClient
           ? await this.mcpClient.executeTool(call.name, call.args, this.riskGuard)
           : await executeAgentTool(call.name, call.args, this.riskGuard);
@@ -272,7 +274,8 @@ export class MultiLLMAdapter {
       const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
       for (const toolUse of toolUseBlocks) {
-        console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(toolUse.name)} with ${JSON.stringify(toolUse.input)}`));
+        const argSummary = Object.keys(toolUse.input || {}).join(", ") || "—";
+        console.log(chalk.cyan(`[Binance Agent Tool] Invoking ${chalk.bold(toolUse.name)} { ${argSummary} }`));
         const toolOutput = this.mcpClient
           ? await this.mcpClient.executeTool(toolUse.name, toolUse.input, this.riskGuard)
           : await executeAgentTool(toolUse.name, toolUse.input, this.riskGuard);
