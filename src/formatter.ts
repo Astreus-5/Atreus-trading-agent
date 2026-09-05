@@ -2,16 +2,34 @@ import chalk from "chalk";
 
 /**
  * Formats Markdown text into clean, styled terminal output using Chalk ANSI colors.
- * Eliminates raw "#" headers, "**" bold tags, and "*" bullets for a polished CLI interface.
+ * Eliminates raw markdown artifacts and renders rich tables, key-value highlights, and cards.
  */
 export function formatTerminalResponse(markdown: string): string {
   if (!markdown) return "";
 
-  const lines = markdown.split("\n");
+  const rawLines = markdown.split("\n");
   const formattedLines: string[] = [];
   let inCodeBlock = false;
+  let tableBuffer: string[] = [];
 
-  for (let line of lines) {
+  const flushTable = () => {
+    if (tableBuffer.length > 0) {
+      formattedLines.push(renderMarkdownTable(tableBuffer));
+      tableBuffer = [];
+    }
+  };
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+
+    // Detect Markdown Table row
+    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+      tableBuffer.push(line);
+      continue;
+    } else {
+      flushTable();
+    }
+
     // Code block toggle
     if (line.trim().startsWith("```")) {
       inCodeBlock = !inCodeBlock;
@@ -33,7 +51,7 @@ export function formatTerminalResponse(markdown: string): string {
     // Headers
     if (/^#\s+(.+)$/.test(line)) {
       const title = line.replace(/^#\s+/, "").trim();
-      formattedLines.push("\n" + chalk.bold.cyanBright("=== " + formatInline(title) + " ==="));
+      formattedLines.push("\n" + chalk.bold.bgCyan.black(` ${title} `));
       continue;
     }
 
@@ -45,14 +63,30 @@ export function formatTerminalResponse(markdown: string): string {
 
     if (/^###\s+(.+)$/.test(line)) {
       const title = line.replace(/^###\s+/, "").trim();
-      formattedLines.push("\n" + chalk.bold.white("  ▸ " + formatInline(title)));
+      formattedLines.push("\n" + chalk.bold.cyan("  ▸ " + formatInline(title)));
       continue;
     }
 
-    // Bullet points: convert "- " or "* " to clean bullet "  • "
+    // Callouts / Blockquotes (> or Note:)
+    if (line.trim().startsWith(">") || /^\s*\(?(Note|Warning|Important):/i.test(line)) {
+      const cleanNote = line.replace(/^>\s*/, "").trim();
+      formattedLines.push("  " + chalk.dim("│ ") + chalk.yellow(formatInline(cleanNote)));
+      continue;
+    }
+
+    // Nested bullet points (indented by 2+ spaces)
+    if (/^\s{2,}[-*]\s+(.+)$/.test(line)) {
+      const match = line.match(/^\s+/);
+      const indent = match ? match[0] : "  ";
+      const content = line.replace(/^\s*[-*]\s+/, "");
+      formattedLines.push(indent + chalk.cyan("•") + " " + formatKeyValue(content));
+      continue;
+    }
+
+    // Top-level bullet points: "- " or "* "
     if (/^\s*[-*]\s+(.+)$/.test(line)) {
       const content = line.replace(/^\s*[-*]\s+/, "");
-      formattedLines.push("  " + chalk.cyan("•") + " " + formatInline(content));
+      formattedLines.push("  " + chalk.cyan("•") + " " + formatKeyValue(content));
       continue;
     }
 
@@ -60,7 +94,7 @@ export function formatTerminalResponse(markdown: string): string {
     if (/^\s*\d+\.\s+(.+)$/.test(line)) {
       const match = line.match(/^(\s*\d+\.)\s+(.+)$/);
       if (match) {
-        formattedLines.push("  " + chalk.yellow(match[1]) + " " + formatInline(match[2]));
+        formattedLines.push("  " + chalk.yellow(match[1]) + " " + formatKeyValue(match[2]));
         continue;
       }
     }
@@ -69,7 +103,103 @@ export function formatTerminalResponse(markdown: string): string {
     formattedLines.push(formatInline(line));
   }
 
+  flushTable();
   return formattedLines.join("\n");
+}
+
+/**
+ * Highlights key-value patterns (e.g. "Free: 7.92640413", "Status: SUCCESS")
+ */
+function formatKeyValue(text: string): string {
+  const kvMatch = text.match(/^([^:]+):\s*(.+)$/);
+  if (kvMatch) {
+    const key = kvMatch[1].trim();
+    const val = kvMatch[2].trim();
+    return chalk.bold.white(key + ": ") + colorizeValue(formatInline(val));
+  }
+  return formatInline(text);
+}
+
+/**
+ * Colorizes numbers, statuses, and currency tags for enhanced UI beauty.
+ */
+function colorizeValue(val: string): string {
+  // Status badges
+  if (/^(SUCCESS|FILLED|NEW|COMPLETED|CONFIRMED|BUY|LONG)/i.test(val)) {
+    return chalk.bold.green(val);
+  }
+  if (/^(REJECTED|FAILED|CANCELLED|CANCEL|SELL|SHORT)/i.test(val)) {
+    return chalk.bold.red(val);
+  }
+  if (/^(PENDING|WAITING|NEUTRAL)/i.test(val)) {
+    return chalk.bold.yellow(val);
+  }
+
+  // Currency highlight: e.g. 7.9264 USDT -> green amount, cyan currency
+  return val.replace(/\b(\d+(?:\.\d+)?)\s*(USDT|BNB|BTC|ETH|SOL|USD)\b/gi, (_, amt, cur) => {
+    return chalk.bold.green(amt) + " " + chalk.cyan(cur.toUpperCase());
+  });
+}
+
+/**
+ * Renders a Markdown table into a clean unicode boxed table.
+ */
+function renderMarkdownTable(lines: string[]): string {
+  if (lines.length < 2) return lines.join("\n");
+
+  const rows = lines
+    .map((l) =>
+      l
+        .split("|")
+        .slice(1, -1)
+        .map((c) => c.trim())
+    )
+    .filter((r) => r.length > 0);
+
+  // Filter out divider row (e.g. |---|---|)
+  const contentRows = rows.filter((r) => !r.every((c) => /^[-:]+$/.test(c)));
+  if (contentRows.length === 0) return "";
+
+  const colCount = Math.max(...contentRows.map((r) => r.length));
+  const colWidths: number[] = Array(colCount).fill(0);
+
+  for (const r of contentRows) {
+    for (let c = 0; c < colCount; c++) {
+      const len = (r[c] ?? "").length;
+      if (len > colWidths[c]) colWidths[c] = len;
+    }
+  }
+
+  const pad = (s: string, w: number) => s + " ".repeat(Math.max(0, w - s.length));
+
+  const topBorder = "  ┌" + colWidths.map((w) => "─".repeat(w + 2)).join("┬") + "┐";
+  const midBorder = "  ├" + colWidths.map((w) => "─".repeat(w + 2)).join("┼") + "┤";
+  const botBorder = "  └" + colWidths.map((w) => "─".repeat(w + 2)).join("┴") + "┘";
+
+  const out: string[] = [];
+  out.push(chalk.cyan(topBorder));
+
+  // Header row
+  const header = contentRows[0];
+  const headerStr =
+    "  │ " +
+    header.map((h, i) => chalk.bold.white(pad(h, colWidths[i]))).join(chalk.cyan(" │ ")) +
+    chalk.cyan(" │");
+  out.push(headerStr);
+  out.push(chalk.cyan(midBorder));
+
+  // Data rows
+  for (let r = 1; r < contentRows.length; r++) {
+    const row = contentRows[r];
+    const rowStr =
+      "  │ " +
+      row.map((cell, i) => colorizeValue(pad(cell, colWidths[i]))).join(chalk.cyan(" │ ")) +
+      chalk.cyan(" │");
+    out.push(rowStr);
+  }
+
+  out.push(chalk.cyan(botBorder));
+  return out.join("\n");
 }
 
 function formatInline(text: string): string {
@@ -88,7 +218,10 @@ function formatInline(text: string): string {
   result = result.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, "$1" + chalk.dim("$2") + "$3");
 
   // Markdown links: [title](url) -> title (url)
-  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, title, url) => chalk.underline(title) + " " + chalk.dim("(" + url + ")"));
+  result = result.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    (_, title, url) => chalk.underline(title) + " " + chalk.dim("(" + url + ")")
+  );
 
   return result;
 }

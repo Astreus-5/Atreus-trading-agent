@@ -113,7 +113,8 @@ async function main() {
       const reply = await llmAdapter.chat(userPrompt);
 
       if (reply) {
-        console.log(`\n${chalk.bold.magenta("Agent:")}\n${formatTerminalResponse(reply)}\n`);
+        const header = chalk.bold.bgHex("#F0B90B").black(" ⚡ ATREUS AI ") + " " + chalk.dim("Binance Agent OS");
+        console.log(`\n${header}\n${chalk.dim("───────────────────────────────────────────────────")}\n${formatTerminalResponse(reply)}\n`);
       } else {
         console.log(chalk.yellow("\n[Notice] No response returned by model. Please retry.\n"));
       }
