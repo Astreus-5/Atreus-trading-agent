@@ -2,6 +2,19 @@ import chalk from "chalk";
 import { RiskGuard, TradeProposal } from "./risk.js";
 import { requireHumanConfirmation } from "./confirmation.js";
 
+/**
+ * ============================================================================
+ * Official Binance Agent OS Model Context Protocol (MCP) Client
+ * ============================================================================
+ * Status: Decoupled / Future-Ready Adapter
+ *
+ * Implements standard JSON-RPC 2.0 client for Binance Agent OS MCP Server:
+ * Endpoint: https://agent.binance.com/mcp/agentic
+ *
+ * Designed to seamlessly plug into MultiLLMAdapter when Binance activates
+ * public custom agent whitelisting on its OAuth authorization server.
+ * ============================================================================
+ */
 export interface MCPToolDefinition {
   name: string;
   description: string;

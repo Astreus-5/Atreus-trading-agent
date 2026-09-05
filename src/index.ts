@@ -31,22 +31,33 @@ async function main() {
   const riskGuard = new RiskGuard();
   const systemPrompt = getSystemPrompt(riskGuard.getConfig());
 
-  // ── Official Binance Agent OS MCP Connection ─────────────────────────────────
+  // ── Official Binance Agent OS MCP Adapter (Decoupled / Future-Ready) ───────
   let mcpClient: BinanceMCPClient | undefined;
-  try {
-    const token = await BinanceMCPAuth.authenticate();
-    if (token) {
-      mcpClient = new BinanceMCPClient(token);
-      const tools = await mcpClient.init();
-      console.log(chalk.green("[Binance MCP Engine] Connected to official Binance Agent OS Server ✓"));
-      console.log(
-        chalk.green(
-          `[Binance MCP Engine] ${tools.length} dynamic official tools loaded (Spot • Futures • Wallet • Sub-Accounts) ✓`
-        )
-      );
+  const mcpEnabled = process.env.ENABLE_BINANCE_MCP === "true";
+  const existingToken = BinanceMCPAuth.getStoredToken();
+
+  if (mcpEnabled || existingToken) {
+    try {
+      const token = existingToken || (await BinanceMCPAuth.authenticate());
+      if (token) {
+        mcpClient = new BinanceMCPClient(token);
+        const tools = await mcpClient.init();
+        console.log(chalk.green("[Binance MCP Engine] Connected to official Binance Agent OS Server ✓"));
+        console.log(
+          chalk.green(
+            `[Binance MCP Engine] ${tools.length} dynamic official tools loaded (Spot • Futures • Wallet • Sub-Accounts) ✓`
+          )
+        );
+      }
+    } catch (err: any) {
+      console.warn(chalk.yellow(`[Notice] MCP initialization skipped: ${err.message}`));
     }
-  } catch (err: any) {
-    console.warn(chalk.yellow(`[Notice] MCP initialization skipped: ${err.message}`));
+  } else {
+    console.log(
+      chalk.dim(
+        "[Binance MCP Engine] Adapter dormant (ready for future custom agent support) ✓"
+      )
+    );
   }
 
   let llmAdapter: MultiLLMAdapter;

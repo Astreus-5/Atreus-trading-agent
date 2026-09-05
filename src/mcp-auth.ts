@@ -6,6 +6,17 @@ import { stdin as input, stdout as output } from "node:process";
 import chalk from "chalk";
 import boxen from "boxen";
 
+/**
+ * ============================================================================
+ * Official Binance Agent OS OAuth 2.0 PKCE Authentication Manager
+ * ============================================================================
+ * Status: Decoupled / Future-Ready Adapter
+ *
+ * Implements RFC 7636 (PKCE with S256) and RFC 7591 OAuth metadata flow
+ * for Binance Agent OS. Preserves complete token exchange & persistence
+ * logic for immediate activation once custom agent client IDs are supported.
+ * ============================================================================
+ */
 export interface StoredToken {
   access_token: string;
   token_type: string;
