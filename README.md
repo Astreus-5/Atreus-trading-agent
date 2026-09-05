@@ -121,15 +121,16 @@ atreus-trading-agent/
 
 ---
 
-## 🚀 Quickstart Guide (Evaluation in Under 2 Minutes)
+ ## 🚀 Quickstart Guide (Evaluation in Under 2 Minutes)
 
 ### Prerequisites
 - **Node.js ≥ 20** (tested on Node v22)
+- **Binance account** with a dedicated Sub-Account API key (see setup below)
 - **ANY ONE of the following LLM API keys**:
-  - `ANTHROPIC_API_KEY` (Claude 3.5 Sonnet)
-  - `OPENAI_API_KEY` (GPT-4o)
-  - `GOOGLE_API_KEY` (Gemini 1.5 Pro)
-  - `OPENROUTER_API_KEY` (DeepSeek)
+  - `ANTHROPIC_API_KEY` → [console.anthropic.com](https://console.anthropic.com)
+  - `OPENAI_API_KEY` → [platform.openai.com](https://platform.openai.com)
+  - `GOOGLE_API_KEY` → [aistudio.google.com](https://aistudio.google.com)
+  - `OPENROUTER_API_KEY` → [openrouter.ai](https://openrouter.ai) *(free tier available)*
 
 ---
 
@@ -143,40 +144,49 @@ npm install
 
 ---
 
-### Step 2: Configure Environment
+### Step 2: Get Your Binance Sub-Account API Key
 
-Copy the example environment file:
+> ⚠️ **Always use a Sub-Account key — never your main account key.** Sub-accounts have zero withdrawal authority, so the agent cannot move funds off Binance.
+
+1. Log in to [binance.com](https://binance.com)
+2. Go to **Profile → Sub-Account Management → Create Sub-Account**
+3. Fund the sub-account with a small amount of USDT (min ~$10 for testing)
+4. In the sub-account, go to **API Management → Create API**
+5. Enable **Spot & Margin Trading** and **Futures Trading** only — disable withdrawals
+6. Copy the **API Key** and **Secret Key**
+
+---
+
+### Step 3: Configure Environment
+
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and configure your API keys:
+Open `.env` and fill in your keys:
 
 ```dotenv
-# ─── PICK ONE LLM KEY — only one is required ───────────────────
-ANTHROPIC_API_KEY=sk-ant-...        # Claude 3.5 Sonnet
-# OPENAI_API_KEY=sk-proj-...        # GPT-4o
-# GOOGLE_API_KEY=AIzaSy...          # Gemini 1.5 Pro
-# OPENROUTER_API_KEY=sk-or-v1-...   # DeepSeek
+# ─── PICK ONE LLM KEY — only one is required ───────────────────────────────
+ANTHROPIC_API_KEY=sk-ant-...        # Claude 3.5 Sonnet  → console.anthropic.com
+# OPENAI_API_KEY=sk-proj-...        # GPT-4o             → platform.openai.com
+# GOOGLE_API_KEY=AIzaSy...          # Gemini 1.5 Pro     → aistudio.google.com
+# OPENROUTER_API_KEY=sk-or-v1-...   # DeepSeek (free)    → openrouter.ai
 
-# ─── DEDICATED SUB-ACCOUNT CREDENTIALS (Recommended) ────────────
-# Isolated trading credentials with zero withdrawal authority:
+# ─── BINANCE SUB-ACCOUNT API KEY (Required) ────────────────────────────────
+# Get this from: Binance → Sub-Account → API Management
 BINANCE_SUB_ACCOUNT_API_KEY=your_subaccount_api_key
 BINANCE_SUB_ACCOUNT_API_SECRET=your_subaccount_api_secret
 
-# ─── RISK CONTROLS (Safe defaults pre-set) ─────────────────────
+# ─── RISK CONTROLS (Safe defaults — adjust as needed) ──────────────────────
 MAX_POSITION_PCT=5        # Max 5% of balance per trade
 MAX_LEVERAGE=5            # Max 5× leverage for futures
 STOP_LOSS_PCT=2           # Minimum 2% mandatory stop-loss
 DAILY_LOSS_LIMIT_PCT=10   # 10% daily drawdown circuit breaker
-
-# ─── BINANCE MCP ENGINE (Optional / Future-Ready) ───────────────
-ENABLE_BINANCE_MCP=false  # Set to true when custom agents are whitelisted
 ```
 
 ---
 
-### Step 3: Run the Agent
+### Step 4: Run the Agent
 
 ```bash
 npm start
@@ -194,12 +204,13 @@ Expected startup output:
 │                                                                           │
 ╰───────────────────────────────────────────────────────────────────────────╯
 
-[Binance MCP Engine] Adapter dormant (ready for future custom agent support) ✓
-[LLM Provider] Auto-detected: OPENROUTER (deepseek/deepseek-chat)
+[Binance REST API] 22 native tools active — Spot • Futures • Convert • Wallet ✓
+[Binance MCP Engine] JSON-RPC 2.0 adapter built & ready — run with --mcp-auth to activate OAuth flow ✓
+[LLM Provider] Auto-detected: ANTHROPIC (claude-3-5-sonnet-20241022)
 [Sub-Account Security] Zero-withdrawal trading perimeter active ✓
 [Binance Skills Hub] Pre-trade multi-chain intelligence & sentiment active ✓
 [Pre-Trade Guard] RiskGuard Engine Active (Max 5% Position, Max 5× Leverage) ✓
-[Safety Invariant] Human-in-the-Loop Confirmation Gate (CONFIRM Required) ✓
+[Safety Invariant] Human-in-the-Loop Confirmation Gate (1/Y to execute) ✓
 [Post-Trade Synthesis] Institutional fill & slippage evaluation enabled ✓
 
 ✨ Atreus AI Trading Agent is online and ready for instructions.
