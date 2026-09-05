@@ -110,13 +110,24 @@ async function main() {
       }
 
       console.log(chalk.dim("\nThinking & consulting Binance market tools..."));
-      const reply = await llmAdapter.chat(userPrompt);
+
+      // Auto-retry up to 2 times if the model returns an empty response
+      let reply: string | null = null;
+      const MAX_RETRIES = 2;
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        reply = await llmAdapter.chat(userPrompt);
+        if (reply) break;
+        if (attempt < MAX_RETRIES) {
+          console.log(chalk.dim(`[Notice] Model returned empty response — retrying (${attempt + 1}/${MAX_RETRIES})...`));
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
 
       if (reply) {
         const header = chalk.bold.bgHex("#F0B90B").black(" ⚡ ATREUS AI ") + " " + chalk.dim("Binance Agent OS");
         console.log(`\n${header}\n${chalk.dim("───────────────────────────────────────────────────")}\n${formatTerminalResponse(reply)}\n`);
       } else {
-        console.log(chalk.yellow("\n[Notice] No response returned by model. Please retry.\n"));
+        console.log(chalk.yellow("\n[Notice] LLM provider is unresponsive. Please rephrase your query or restart Atreus.\n"));
       }
     } catch (err: any) {
       if (err?.code === "ERR_USE_AFTER_CLOSE" || err?.message?.includes("closed") || err?.message?.includes("EOF")) {
