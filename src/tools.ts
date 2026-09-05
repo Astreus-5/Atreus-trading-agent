@@ -107,12 +107,12 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "submit_trade_order",
-      description: "Submits a trade order (Spot, USDS-M Futures, or COIN-M Futures). Automatically enforces RiskGuard auditing and mandatory operator CONFIRM gate before sending.",
+      description: "PRIMARY TRADING TOOL: Submits an official exchange order on Binance Spot or Futures (for trades >= 5 USDT). Enforces RiskGuard pre-trade auditing and mandatory operator confirmation before sending.",
       parameters: {
         type: "object",
         properties: {
           product: { type: "string", enum: ["SPOT", "USDS-M FUTURES", "COIN-M FUTURES"], description: "Market product" },
-          symbol: { type: "string", description: "Trading symbol, e.g. BTCUSDT" },
+          symbol: { type: "string", description: "Trading symbol, e.g. BTCUSDT, ETHUSDT, BNBUSDT" },
           side: { type: "string", enum: ["BUY", "SELL"], description: "Order direction" },
           orderType: { type: "string", enum: ["MARKET", "LIMIT"], description: "Order execution type" },
           quantity: { type: "number", description: "Asset quantity" },
@@ -157,7 +157,7 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "convert_tokens",
-      description: "Instantly converts tokens using Binance Convert (zero fees, no $5 minimum notional filter). Perfect for small balances, dust, or direct swaps.",
+      description: "Binance Convert: Use ONLY for dust balances under 5 USDT, or when the user explicitly requests to 'convert' or 'swap' dust assets. For standard trades >= 5 USDT, use submit_trade_order.",
       parameters: {
         type: "object",
         properties: {
