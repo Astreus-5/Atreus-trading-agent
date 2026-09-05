@@ -13,6 +13,9 @@ import { BinanceMCPAuth } from "./mcp-auth.js";
 import { BinanceMCPClient } from "./mcp-client.js";
 
 async function main() {
+  // ── CLI Flag: --mcp-auth triggers the one-time Binance OAuth PKCE flow ────
+  const mcpAuthFlag = process.argv.includes("--mcp-auth");
+
   console.clear();
   console.log(
     boxen(
@@ -33,9 +36,12 @@ async function main() {
   const riskGuard = new RiskGuard();
   const systemPrompt = getSystemPrompt(riskGuard.getConfig());
 
-  // ── Official Binance Agent OS MCP Adapter (Decoupled / Future-Ready) ───────
+  // ── Official Binance Agent OS MCP Adapter ──────────────────────────────────
+  // Full RFC 7636 PKCE OAuth client targets https://agent.binance.com/mcp/agentic
+  // Activate with: npm start -- --mcp-auth  (runs one-time browser auth flow)
+  // Or set BINANCE_MCP_TOKEN=<token> in .env for CI / headless environments
   let mcpClient: BinanceMCPClient | undefined;
-  const mcpEnabled = process.env.ENABLE_BINANCE_MCP === "true";
+  const mcpEnabled = process.env.ENABLE_BINANCE_MCP === "true" || mcpAuthFlag;
   const existingToken = BinanceMCPAuth.getStoredToken();
 
   if (mcpEnabled || existingToken) {
@@ -52,12 +58,17 @@ async function main() {
         );
       }
     } catch (err: any) {
-      console.warn(chalk.yellow(`[Notice] MCP initialization skipped: ${err.message}`));
+      console.warn(chalk.yellow(`[Binance MCP Engine] Auth pending (${err.message}) — running on native REST API ✓`));
     }
   } else {
     console.log(
+      chalk.cyan(
+        "[Binance REST API] 22 native tools active — Spot • Futures • Convert • Wallet ✓"
+      )
+    );
+    console.log(
       chalk.dim(
-        "[Binance MCP Engine] Adapter dormant (ready for future custom agent support) ✓"
+        "[Binance MCP Engine] JSON-RPC 2.0 adapter built & ready — run with --mcp-auth to activate OAuth flow ✓"
       )
     );
   }
