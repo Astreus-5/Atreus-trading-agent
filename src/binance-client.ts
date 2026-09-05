@@ -313,7 +313,7 @@ export class BinanceClient {
   }
 
   /**
-   * Executes a live signed trade order on Binance Spot.
+   * Executes a live signed trade order on Binance Spot or Futures.
    */
   async executeOrder(params: {
     product: "SPOT" | "USDS-M FUTURES" | "COIN-M FUTURES";
@@ -321,24 +321,41 @@ export class BinanceClient {
     side: "BUY" | "SELL";
     orderType: "MARKET" | "LIMIT";
     quantity: number;
+    notionalUsd?: number;
     price?: number;
   }): Promise<any> {
     if (!this.hasKeys()) {
       return {
         status: "AUTHENTICATION_REQUIRED",
         message:
-          "Live Binance API credentials (BINANCE_API_KEY and BINANCE_API_SECRET) are required in .env to execute live orders on Binance. Public market data and technical indicators remain fully active.",
+          "Live Binance API credentials (BINANCE_SUB_ACCOUNT_API_KEY and BINANCE_SUB_ACCOUNT_API_SECRET) are required in .env to execute live orders on Binance. Public market data and technical indicators remain fully active.",
       };
     }
 
+    const isFutures = params.product === "USDS-M FUTURES";
+    const baseUrl = isFutures ? this.futuresBaseUrl : this.spotBaseUrl;
+    const endpoint = isFutures ? "/fapi/v1/order" : "/api/v3/order";
     const timestamp = Date.now();
-    let query = `symbol=${params.symbol.toUpperCase()}&side=${params.side}&type=${params.orderType}&quantity=${params.quantity}&timestamp=${timestamp}`;
+
+    let query = `symbol=${params.symbol.toUpperCase()}&side=${params.side}&type=${params.orderType}`;
+
+    // On Binance Spot MARKET BUY: use quoteOrderQty if notionalUsd is provided to spend exact amount and prevent LOT_SIZE filter failures
+    if (!isFutures && params.orderType === "MARKET" && params.side === "BUY" && params.notionalUsd && params.notionalUsd > 0) {
+      query += `&quoteOrderQty=${params.notionalUsd.toFixed(2)}`;
+    } else {
+      // Standardize quantity precision (up to 4 decimals for standard spot/futures lots)
+      const formattedQty = Number(params.quantity.toFixed(4));
+      query += `&quantity=${formattedQty}`;
+    }
+
     if (params.orderType === "LIMIT" && params.price) {
       query += `&price=${params.price}&timeInForce=GTC`;
     }
+
+    query += `&timestamp=${timestamp}`;
     const signature = this.sign(query);
 
-    const res = await fetch(`${this.spotBaseUrl}/api/v3/order?${query}&signature=${signature}`, {
+    const res = await fetch(`${baseUrl}${endpoint}?${query}&signature=${signature}`, {
       method: "POST",
       headers: { "X-MBX-APIKEY": this.apiKey },
     });

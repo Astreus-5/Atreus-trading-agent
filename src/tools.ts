@@ -311,6 +311,7 @@ export async function executeAgentTool(
         side: proposal.side,
         orderType: proposal.orderType,
         quantity: proposal.quantity,
+        notionalUsd: proposal.notionalUsd,
         price: proposal.price,
       });
     }
