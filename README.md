@@ -283,6 +283,14 @@ Expected test suite output:
 
 ---
 
+## 🗺️ Roadmap
+
+> **[View full ROADMAP.md →](./ROADMAP.md)**
+
+This submission is **v1** — the terminal CLI with 22 REST tools and proven real-money execution. Future versions evolve Atreus into a multi-channel platform (Telegram, WhatsApp) with the official Binance Agent OS MCP as the primary integration layer once Binance authorizes custom agent connections. The native REST API layer may be retired at that point — it exists today because it works, not as a permanent design choice.
+
+---
+
 ## ⚖️ Legal & Risk Disclaimer
 
 Distributed under the MIT License. See [RISK_DISCLAIMER.md](./RISK_DISCLAIMER.md) for full risk details. Cryptocurrency trading involves substantial risk of loss. Never risk funds you cannot afford to lose.
