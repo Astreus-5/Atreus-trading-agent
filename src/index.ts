@@ -7,6 +7,7 @@ import { RiskGuard } from "./risk.js";
 import { getSystemPrompt } from "./prompt.js";
 import { MultiLLMAdapter } from "./llm-provider.js";
 import { formatTerminalResponse } from "./formatter.js";
+import { setSharedReadline } from "./confirmation.js";
 
 import { BinanceMCPAuth } from "./mcp-auth.js";
 import { BinanceMCPClient } from "./mcp-client.js";
@@ -97,6 +98,7 @@ async function main() {
   );
 
   const rl = readline.createInterface({ input, output });
+  setSharedReadline(rl);
 
   while (true) {
     try {

@@ -4,6 +4,19 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { TradeProposal } from "./risk.js";
 
+let sharedRl: readline.Interface | null = null;
+
+export function setSharedReadline(rl: readline.Interface): void {
+  sharedRl = rl;
+}
+
+export function getSharedReadline(): readline.Interface {
+  if (!sharedRl || (sharedRl as any).closed) {
+    sharedRl = readline.createInterface({ input, output });
+  }
+  return sharedRl;
+}
+
 /**
  * Renders the proposed trade into an unmistakable, high-visibility box
  * and prompts the human operator to type 'CONFIRM'.
@@ -39,11 +52,13 @@ ${chalk.bold.red("To authorize and execute this order on Binance, type  CONFIRM 
     })
   );
 
-  const rl = readline.createInterface({ input, output });
+  const rl = getSharedReadline();
   const answer = (await rl.question(chalk.bold.white("Your Decision > "))).trim();
-  rl.close();
 
-  if (answer.toUpperCase() === "CONFIRM") {
+  // Normalize input (case-insensitive)
+  const normalized = answer.toUpperCase().replace(/\s+/g, "");
+
+  if (normalized === "CONFIRM") {
     console.log(chalk.bold.green("\n✓ Execution confirmed by operator. Submitting order to Binance...\n"));
     return true;
   } else {
