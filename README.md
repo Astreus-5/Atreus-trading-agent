@@ -153,8 +153,8 @@ ANTHROPIC_API_KEY=sk-ant-...        # Claude 3.5 Sonnet
 
 # ─── DEDICATED SUB-ACCOUNT CREDENTIALS (Recommended) ────────────
 # Isolated trading credentials with zero withdrawal authority:
-BINANCE_API_KEY=your_subaccount_api_key
-BINANCE_API_SECRET=your_subaccount_api_secret
+BINANCE_SUB_ACCOUNT_API_KEY=your_subaccount_api_key
+BINANCE_SUB_ACCOUNT_API_SECRET=your_subaccount_api_secret
 
 # ─── RISK CONTROLS (Safe defaults pre-set) ─────────────────────
 MAX_POSITION_PCT=5        # Max 5% of balance per trade

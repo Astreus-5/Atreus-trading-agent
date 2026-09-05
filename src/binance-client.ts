@@ -43,10 +43,10 @@ export class BinanceClient {
 
   /**
    * Initializes the Binance Client.
-   * @param apiKey Optional Binance API Key for authenticated operations.
-   * @param apiSecret Optional Binance API Secret for authenticated operations.
+   * @param apiKey Your Binance sub-account API key (trade-only, no withdrawal rights).
+   * @param apiSecret Your Binance sub-account API secret.
    */
-  constructor(apiKey = process.env.BINANCE_API_KEY ?? "", apiSecret = process.env.BINANCE_API_SECRET ?? "") {
+  constructor(apiKey = process.env.BINANCE_SUB_ACCOUNT_API_KEY ?? "", apiSecret = process.env.BINANCE_SUB_ACCOUNT_API_SECRET ?? "") {
     this.apiKey = apiKey.trim();
     this.apiSecret = apiSecret.trim();
   }
