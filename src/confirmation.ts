@@ -18,15 +18,18 @@ export function getSharedReadline(): readline.Interface {
 }
 
 /**
- * Renders the proposed trade into an unmistakable, high-visibility box
- * and prompts the human operator to type 'CONFIRM'.
+ * Renders the proposed trade as a high-visibility card with visual button choices.
+ * Operator presses 1 / Y / Enter to confirm, or 2 / N to cancel.
  *
  * @param proposal The trade parameters formulated by the agent.
- * @returns true if the operator typed 'CONFIRM', false otherwise.
+ * @returns true if the operator confirmed, false otherwise.
  */
 export async function requireHumanConfirmation(proposal: TradeProposal): Promise<boolean> {
   const sideColor = proposal.side === "BUY" ? chalk.bold.green : chalk.bold.red;
   const isFutures = proposal.product !== "SPOT";
+
+  const confirmBtn = chalk.bgGreen.black.bold(" [ 1 ]  ✅  CONFIRM & EXECUTE ");
+  const cancelBtn  = chalk.bgRed.white.bold(" [ 2 ]  ❌  CANCEL & ABORT    ");
 
   const content = `
 ${chalk.bold.yellow("⚠ TRADE PROPOSAL — HUMAN AUTHORIZATION REQUIRED")}
@@ -40,7 +43,8 @@ ${chalk.cyan("Notional Value   :")} ~$${proposal.notionalUsd.toFixed(2)} USD
 ${isFutures ? `${chalk.cyan("Leverage         :")} ${proposal.leverage ?? 1}×\n` : ""}${
     proposal.stopLossPrice ? `${chalk.cyan("Stop-Loss Target :")} $${proposal.stopLossPrice}\n` : ""
   }
-${chalk.bold.red("To authorize and execute this order on Binance, type  CONFIRM .\nPress Enter or type anything else to CANCEL.")}
+${confirmBtn}   ${chalk.dim("press  1  or  Y")}
+${cancelBtn}   ${chalk.dim("press  2  or  N")}
 `.trim();
 
   console.log(
@@ -53,16 +57,22 @@ ${chalk.bold.red("To authorize and execute this order on Binance, type  CONFIRM 
   );
 
   const rl = getSharedReadline();
-  const answer = (await rl.question(chalk.bold.white("Your Decision > "))).trim();
+  const answer = (await rl.question(chalk.bold.white("Your Choice (1/Y = Execute, 2/N = Cancel) > "))).trim();
 
-  // Normalize input (case-insensitive)
   const normalized = answer.toUpperCase().replace(/\s+/g, "");
 
-  if (normalized === "CONFIRM") {
-    console.log(chalk.bold.green("\n✓ Execution confirmed by operator. Submitting order to Binance...\n"));
+  const confirmed =
+    normalized === "1" ||
+    normalized === "Y" ||
+    normalized === "YES" ||
+    normalized === "CONFIRM" ||
+    normalized === "" ; // Enter defaults to confirm when the card is shown
+
+  if (confirmed) {
+    console.log(chalk.bold.green("\n✅ Execution confirmed. Submitting order to Binance...\n"));
     return true;
   } else {
-    console.log(chalk.bold.red("\n✗ Order cancelled by operator. No order was submitted.\n"));
+    console.log(chalk.bold.red("\n❌ Order cancelled. No order was submitted.\n"));
     return false;
   }
 }
