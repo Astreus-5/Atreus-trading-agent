@@ -270,14 +270,13 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "get_my_trades",
-      description: "Binance Trade History & Journaling: Fetches historical executed trades, fill prices, quantities, and actual commission fees paid for a given symbol on Spot.",
+      description: "Binance Trade History & Journaling: Fetches historical executed trades, fill prices, quantities, and actual commission fees paid across Spot and USDS-M Futures. If symbol is omitted, returns recent trades across all markets.",
       parameters: {
         type: "object",
         properties: {
-          symbol: { type: "string", description: "Trading pair symbol, e.g. BNBUSDT, BTCUSDT, ETHUSDT" },
+          symbol: { type: "string", description: "Optional trading pair symbol (e.g. SOLUSDT, BNBUSDT). If omitted, returns recent trades across all pairs." },
           limit: { type: "number", description: "Maximum number of recent trades to fetch (default: 10, max: 100)" },
         },
-        required: ["symbol"],
       },
     },
   },

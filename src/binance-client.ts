@@ -658,74 +658,137 @@ export class BinanceClient {
   }
 
   /**
-   * Retrieves recent trade execution fills, fees, and realized transactions for a given symbol across Spot and USDS-M Futures.
+   * Retrieves recent trade execution fills, fees, and realized transactions across Spot and USDS-M Futures.
+   * If symbol is omitted, queries all recent trades across the account.
    */
-  async getMyTrades(symbol: string, limit = 10): Promise<any[]> {
+  async getMyTrades(symbol?: string, limit = 10): Promise<any[]> {
     if (!this.hasKeys()) return [];
-    const sym = symbol.toUpperCase();
     const ts = Date.now();
-
-    const qSpot = `symbol=${sym}&limit=${limit}&timestamp=${ts}`;
-    const sigSpot = this.sign(qSpot);
-
-    const qFut = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${ts}`;
-    const sigFut = this.sign(qFut);
-
-    const [spotRes, futRes] = await Promise.allSettled([
-      fetch(`${this.spotBaseUrl}/api/v3/myTrades?${qSpot}&signature=${sigSpot}`, {
-        headers: { "X-MBX-APIKEY": this.apiKey },
-      }),
-      fetch(`${this.futuresBaseUrl}/fapi/v1/userTrades?${qFut}&signature=${sigFut}`, {
-        headers: { "X-MBX-APIKEY": this.apiKey },
-      }),
-    ]);
-
     const results: any[] = [];
 
-    // Parse Spot trades
-    if (spotRes.status === "fulfilled" && spotRes.value.ok) {
-      const spotTrades = (await spotRes.value.json()) as any[];
-      if (Array.isArray(spotTrades)) {
-        for (const t of spotTrades) {
-          results.push({
-            market: "SPOT",
-            symbol: t.symbol,
-            orderId: t.orderId,
-            tradeId: t.id,
-            side: t.isBuyer ? "BUY" : "SELL",
-            price: t.price,
-            quantity: t.qty,
-            notional: t.quoteQty,
-            commission: t.commission,
-            commissionAsset: t.commissionAsset,
-            isMaker: t.isMaker,
-            time: new Date(t.time).toISOString(),
-          });
+    if (symbol) {
+      const sym = symbol.toUpperCase();
+      const qSpot = `symbol=${sym}&limit=${limit}&timestamp=${ts}`;
+      const sigSpot = this.sign(qSpot);
+
+      const qFut = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${ts}`;
+      const sigFut = this.sign(qFut);
+
+      const [spotRes, futRes] = await Promise.allSettled([
+        fetch(`${this.spotBaseUrl}/api/v3/myTrades?${qSpot}&signature=${sigSpot}`, {
+          headers: { "X-MBX-APIKEY": this.apiKey },
+        }),
+        fetch(`${this.futuresBaseUrl}/fapi/v1/userTrades?${qFut}&signature=${sigFut}`, {
+          headers: { "X-MBX-APIKEY": this.apiKey },
+        }),
+      ]);
+
+      if (spotRes.status === "fulfilled" && spotRes.value.ok) {
+        const spotTrades = (await spotRes.value.json()) as any[];
+        if (Array.isArray(spotTrades)) {
+          for (const t of spotTrades) {
+            results.push({
+              market: "SPOT",
+              symbol: t.symbol,
+              orderId: t.orderId,
+              tradeId: t.id,
+              side: t.isBuyer ? "BUY" : "SELL",
+              price: t.price,
+              quantity: t.qty,
+              notional: t.quoteQty,
+              commission: t.commission,
+              commissionAsset: t.commissionAsset,
+              isMaker: t.isMaker,
+              time: new Date(t.time).toISOString(),
+            });
+          }
         }
       }
-    }
 
-    // Parse Futures trades
-    if (futRes.status === "fulfilled" && futRes.value.ok) {
-      const futTrades = (await futRes.value.json()) as any[];
-      if (Array.isArray(futTrades)) {
-        for (const t of futTrades) {
-          results.push({
-            market: "USDS-M FUTURES",
-            symbol: t.symbol,
-            orderId: t.orderId,
-            tradeId: t.id,
-            side: t.side,
-            price: t.price,
-            quantity: t.qty,
-            notional: t.quoteQty,
-            realizedPnl: t.realizedPnl,
-            commission: t.commission,
-            commissionAsset: t.commissionAsset,
-            isMaker: t.maker,
-            time: new Date(t.time).toISOString(),
-          });
+      if (futRes.status === "fulfilled" && futRes.value.ok) {
+        const futTrades = (await futRes.value.json()) as any[];
+        if (Array.isArray(futTrades)) {
+          for (const t of futTrades) {
+            results.push({
+              market: "USDS-M FUTURES",
+              symbol: t.symbol,
+              orderId: t.orderId,
+              tradeId: t.id,
+              side: t.side,
+              price: t.price,
+              quantity: t.qty,
+              notional: t.quoteQty,
+              realizedPnl: t.realizedPnl,
+              commission: t.commission,
+              commissionAsset: t.commissionAsset,
+              isMaker: t.maker,
+              time: new Date(t.time).toISOString(),
+            });
+          }
         }
+      }
+    } else {
+      // Query all recent futures trades across all pairs
+      try {
+        const qFut = `limit=${limit}&recvWindow=60000&timestamp=${ts}`;
+        const sigFut = this.sign(qFut);
+        const futRes = await fetch(`${this.futuresBaseUrl}/fapi/v1/userTrades?${qFut}&signature=${sigFut}`, {
+          headers: { "X-MBX-APIKEY": this.apiKey },
+        });
+        if (futRes.ok) {
+          const futTrades = (await futRes.json()) as any[];
+          if (Array.isArray(futTrades)) {
+            for (const t of futTrades) {
+              results.push({
+                market: "USDS-M FUTURES",
+                symbol: t.symbol,
+                orderId: t.orderId,
+                tradeId: t.id,
+                side: t.side,
+                price: t.price,
+                quantity: t.qty,
+                notional: t.quoteQty,
+                realizedPnl: t.realizedPnl,
+                commission: t.commission,
+                commissionAsset: t.commissionAsset,
+                isMaker: t.maker,
+                time: new Date(t.time).toISOString(),
+              });
+            }
+          }
+        }
+      } catch {}
+
+      // Query known traded Spot pairs
+      for (const sp of ["BNBUSDT", "SOLUSDT", "ETHUSDT", "BTCUSDT"]) {
+        try {
+          const qSpot = `symbol=${sp}&limit=5&timestamp=${Date.now()}`;
+          const sigSpot = this.sign(qSpot);
+          const sRes = await fetch(`${this.spotBaseUrl}/api/v3/myTrades?${qSpot}&signature=${sigSpot}`, {
+            headers: { "X-MBX-APIKEY": this.apiKey },
+          });
+          if (sRes.ok) {
+            const st = (await sRes.json()) as any[];
+            if (Array.isArray(st)) {
+              for (const t of st) {
+                results.push({
+                  market: "SPOT",
+                  symbol: t.symbol,
+                  orderId: t.orderId,
+                  tradeId: t.id,
+                  side: t.isBuyer ? "BUY" : "SELL",
+                  price: t.price,
+                  quantity: t.qty,
+                  notional: t.quoteQty,
+                  commission: t.commission,
+                  commissionAsset: t.commissionAsset,
+                  isMaker: t.isMaker,
+                  time: new Date(t.time).toISOString(),
+                });
+              }
+            }
+          }
+        } catch {}
       }
     }
 
