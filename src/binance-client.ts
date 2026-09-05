@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import chalk from "chalk";
 import { TechnicalAnalysis } from "./indicators.js";
 
 /**
@@ -97,6 +98,37 @@ export class BinanceClient {
     const precision = Math.max(0, Math.round(-Math.log10(stepSize)));
     const factor = Math.pow(10, precision);
     return Math.floor(qty * factor) / factor;
+  }
+
+  private timeOffset = 0;
+  private timeSynced = false;
+
+  /**
+   * Synchronizes local clock with Binance atomic server time to eliminate -1021 timestamp errors.
+   */
+  public async syncServerTime(): Promise<number> {
+    try {
+      const res = await fetch(`${this.spotBaseUrl}/api/v3/time`);
+      if (res.ok) {
+        const data: any = await res.json();
+        if (data?.serverTime) {
+          this.timeOffset = Number(data.serverTime) - Date.now();
+          this.timeSynced = true;
+          return this.timeOffset;
+        }
+      }
+    } catch {}
+    return 0;
+  }
+
+  /**
+   * Returns exchange-synchronized timestamp.
+   */
+  public async getSyncTimestamp(): Promise<number> {
+    if (!this.timeSynced) {
+      await this.syncServerTime();
+    }
+    return Date.now() + this.timeOffset;
   }
 
   /**
@@ -244,8 +276,8 @@ export class BinanceClient {
 
     // 1. Master Spot & Simple Earn Balances
     try {
-      const timestamp = Date.now();
-      const query = `timestamp=${timestamp}`;
+      const timestamp = await this.getSyncTimestamp();
+      const query = `recvWindow=60000&timestamp=${timestamp}`;
       const signature = this.sign(query);
       const res = await fetch(`${this.spotBaseUrl}/api/v3/account?${query}&signature=${signature}`, {
         headers: { "X-MBX-APIKEY": this.apiKey },
@@ -259,7 +291,8 @@ export class BinanceClient {
 
         // Query actual API Key permissions directly from Binance
         try {
-          const apiQuery = `timestamp=${Date.now()}`;
+          const apiTimestamp = await this.getSyncTimestamp();
+          const apiQuery = `recvWindow=60000&timestamp=${apiTimestamp}`;
           const apiSig = this.sign(apiQuery);
           const apiRes = await fetch(`${this.spotBaseUrl}/sapi/v1/account/apiRestrictions?${apiQuery}&signature=${apiSig}`, {
             headers: { "X-MBX-APIKEY": this.apiKey },
@@ -297,8 +330,8 @@ export class BinanceClient {
 
     // 2. Master USDS-M Futures Balances
     try {
-      const timestamp = Date.now();
-      const query = `timestamp=${timestamp}`;
+      const timestamp = await this.getSyncTimestamp();
+      const query = `recvWindow=60000&timestamp=${timestamp}`;
       const signature = this.sign(query);
       const res = await fetch(`${this.futuresBaseUrl}/fapi/v2/balance?${query}&signature=${signature}`, {
         headers: { "X-MBX-APIKEY": this.apiKey },
@@ -397,7 +430,7 @@ export class BinanceClient {
     const isFutures = params.product === "USDS-M FUTURES";
     const baseUrl = isFutures ? this.futuresBaseUrl : this.spotBaseUrl;
     const endpoint = isFutures ? "/fapi/v1/order" : "/api/v3/order";
-    const timestamp = Date.now();
+    const timestamp = await this.getSyncTimestamp();
 
     let query = `symbol=${params.symbol.toUpperCase()}&side=${params.side}&type=${params.orderType}`;
 
@@ -415,23 +448,43 @@ export class BinanceClient {
       query += `&price=${params.price}&timeInForce=GTC`;
     }
 
-    query += `&timestamp=${timestamp}`;
+    query += `&recvWindow=60000&timestamp=${timestamp}`;
     const signature = this.sign(query);
 
-    const res = await fetch(`${baseUrl}${endpoint}?${query}&signature=${signature}`, {
+    let res = await fetch(`${baseUrl}${endpoint}?${query}&signature=${signature}`, {
       method: "POST",
       headers: { "X-MBX-APIKEY": this.apiKey },
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      // If Spot sell order failed due to NOTIONAL filter (< 5 USDT), automatically execute via Binance Convert
-      if (err.includes("NOTIONAL") && !isFutures && params.side === "SELL") {
-        const fromAsset = params.symbol.replace(/USDT$/i, "").toUpperCase();
-        const toAsset = "USDT";
-        return await this.convertTokens(fromAsset, toAsset, params.quantity);
+      let err = await res.text();
+
+      // If Binance returns error -1021 (Timestamp outside recvWindow), resync atomic time and auto-retry immediately!
+      if (err.includes("-1021") || err.includes("recvWindow")) {
+        console.log(chalk.yellow("[Binance Sync] Clock drift detected (-1021). Re-synchronizing exchange time and retrying..."));
+        await this.syncServerTime();
+        const retryTs = await this.getSyncTimestamp();
+        const baseQuery = query.replace(/&recvWindow=\d+&timestamp=\d+/, "");
+        const retryQuery = `${baseQuery}&recvWindow=60000&timestamp=${retryTs}`;
+        const retrySig = this.sign(retryQuery);
+        res = await fetch(`${baseUrl}${endpoint}?${retryQuery}&signature=${retrySig}`, {
+          method: "POST",
+          headers: { "X-MBX-APIKEY": this.apiKey },
+        });
+        if (!res.ok) {
+          err = await res.text();
+        }
       }
-      throw new Error(`Binance Order submission failed: ${err}`);
+
+      if (!res.ok) {
+        // If Spot sell order failed due to NOTIONAL filter (< 5 USDT), automatically execute via Binance Convert
+        if (err.includes("NOTIONAL") && !isFutures && params.side === "SELL") {
+          const fromAsset = params.symbol.replace(/USDT$/i, "").toUpperCase();
+          const toAsset = "USDT";
+          return await this.convertTokens(fromAsset, toAsset, params.quantity);
+        }
+        throw new Error(`Binance Order submission failed: ${err}`);
+      }
     }
 
     const data: any = await res.json();
@@ -454,8 +507,8 @@ export class BinanceClient {
       throw new Error("Binance API credentials required for conversion.");
     }
 
-    const ts1 = Date.now();
-    const q1 = `fromAsset=${fromAsset.toUpperCase()}&toAsset=${toAsset.toUpperCase()}&fromAmount=${amount}&timestamp=${ts1}`;
+    const ts1 = await this.getSyncTimestamp();
+    const q1 = `fromAsset=${fromAsset.toUpperCase()}&toAsset=${toAsset.toUpperCase()}&fromAmount=${amount}&recvWindow=60000&timestamp=${ts1}`;
     const sig1 = this.sign(q1);
 
     const r1 = await fetch(`${this.spotBaseUrl}/sapi/v1/convert/getQuote`, {
@@ -475,8 +528,8 @@ export class BinanceClient {
     const quoteData: any = await r1.json();
     const quoteId = quoteData.quoteId;
 
-    const ts2 = Date.now();
-    const q2 = `quoteId=${quoteId}&timestamp=${ts2}`;
+    const ts2 = await this.getSyncTimestamp();
+    const q2 = `quoteId=${quoteId}&recvWindow=60000&timestamp=${ts2}`;
     const sig2 = this.sign(q2);
 
     const r2 = await fetch(`${this.spotBaseUrl}/sapi/v1/convert/acceptQuote`, {
@@ -652,8 +705,8 @@ export class BinanceClient {
    */
   async getOpenOrders(symbol?: string): Promise<any[]> {
     if (!this.hasKeys()) return [];
-    const ts = Date.now();
-    let query = `timestamp=${ts}`;
+    const ts = await this.getSyncTimestamp();
+    let query = `recvWindow=60000&timestamp=${ts}`;
     if (symbol) query = `symbol=${symbol.toUpperCase()}&${query}`;
     const sig = this.sign(query);
 
@@ -669,8 +722,8 @@ export class BinanceClient {
    */
   async cancelOrder(symbol: string, orderId?: number): Promise<any> {
     if (!this.hasKeys()) throw new Error("API credentials required to cancel order");
-    const ts = Date.now();
-    let query = `symbol=${symbol.toUpperCase()}&timestamp=${ts}`;
+    const ts = await this.getSyncTimestamp();
+    let query = `symbol=${symbol.toUpperCase()}&recvWindow=60000&timestamp=${ts}`;
     if (orderId) query += `&orderId=${orderId}`;
     const sig = this.sign(query);
 
@@ -691,8 +744,8 @@ export class BinanceClient {
    */
   async getFuturesPositions(symbol?: string): Promise<any[]> {
     if (!this.hasKeys()) return [];
-    const ts = Date.now();
-    let query = `timestamp=${ts}`;
+    const ts = await this.getSyncTimestamp();
+    let query = `recvWindow=60000&timestamp=${ts}`;
     if (symbol) query = `symbol=${symbol.toUpperCase()}&${query}`;
     const sig = this.sign(query);
 
@@ -859,8 +912,8 @@ export class BinanceClient {
   async setFuturesLeverage(symbol: string, leverage: number): Promise<any> {
     if (!this.hasKeys()) throw new Error("API credentials required to set leverage");
     const roundedLeverage = Math.max(1, Math.min(5, Math.floor(leverage)));
-    const ts = Date.now();
-    const query = `symbol=${symbol.toUpperCase()}&leverage=${roundedLeverage}&timestamp=${ts}`;
+    const ts = await this.getSyncTimestamp();
+    const query = `symbol=${symbol.toUpperCase()}&leverage=${roundedLeverage}&recvWindow=60000&timestamp=${ts}`;
     const sig = this.sign(query);
 
     const res = await fetch(`${this.futuresBaseUrl}/fapi/v1/leverage?${query}&signature=${sig}`, {

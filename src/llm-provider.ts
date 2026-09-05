@@ -115,21 +115,31 @@ export class MultiLLMAdapter {
       try {
         return await action();
       } catch (err: any) {
-        const isRateLimit =
+        const isTransient =
           err?.status === 429 ||
           err?.statusCode === 429 ||
+          err?.status === 500 ||
+          err?.status === 502 ||
+          err?.status === 503 ||
+          err?.status === 504 ||
           err?.message?.includes("429") ||
           err?.message?.includes("rate-limit") ||
           err?.message?.includes("rate limit") ||
           err?.message?.includes("Provider returned error") ||
           err?.message?.includes("temporarily") ||
-          err?.message?.includes("overloaded");
+          err?.message?.includes("overloaded") ||
+          err?.message?.includes("Connection error") ||
+          err?.message?.includes("ECONNRESET") ||
+          err?.message?.includes("ETIMEDOUT") ||
+          err?.message?.includes("fetch failed") ||
+          err?.message?.includes("socket hang up") ||
+          err?.message?.includes("timeout");
 
-        if (isRateLimit && attempt < retries) {
+        if (isTransient && attempt < retries) {
           const waitSec = (delayMs * attempt) / 1000;
           console.log(
             chalk.yellow(
-              `\n[Resilience Engine] Upstream provider is temporarily congested. Auto-retrying attempt ${attempt + 1}/${retries} in ${waitSec}s...`
+              `\n[Resilience Engine] Network or upstream provider hiccup (${err?.message?.slice(0, 60) || "Connection error"}). Auto-retrying attempt ${attempt + 1}/${retries} in ${waitSec}s...`
             )
           );
           await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
