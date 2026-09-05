@@ -8,7 +8,8 @@
     "dev": "tsx src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc",
-    "test": "tsx --test tests/**/*.test.ts"
+    "test": "tsx --test tests/**/*.test.ts",
+    "lint": "eslint src/**/*.ts"
   },
   "keywords": [
     "binance",
@@ -32,8 +33,11 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.13.5",
+    "eslint": "^10.10.0",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.69.0"
   }
 }

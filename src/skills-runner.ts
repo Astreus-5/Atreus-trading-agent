@@ -62,7 +62,7 @@ export class BinanceSkillsRunner {
 
       // Determine execution channel
       const scriptsDir = path.join(folderPath, "scripts");
-      let executionType: SkillCatalogEntry["executionType"] = "binary-cli";
+      let executionType: SkillCatalogEntry["executionType"];
       let availableCommands: string[] = [];
 
       if (fs.existsSync(path.join(scriptsDir, "cli.mjs"))) {

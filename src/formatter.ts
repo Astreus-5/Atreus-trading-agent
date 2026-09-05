@@ -229,7 +229,7 @@ function formatInline(text: string): string {
   result = result.replace(/\*\*/g, "").replace(/__/g, "");
 
   // Italic text: *italic* or _italic_
-  result = result.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, "$1" + chalk.dim("$2") + "$3");
+  result = result.replace(/(^|[^*])\*([^*]+)\*([^*]|$)/g, "$1" + chalk.dim("$2") + "$3");
 
   // Markdown links: [title](url) -> title (url)
   result = result.replace(

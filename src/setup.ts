@@ -105,9 +105,9 @@ export async function runSetupWizard(): Promise<void> {
 
   const providerChoice = await ask(chalk.bold.cyan("Your choice (1/2/3/4) > "));
 
-  let llmEnvKey = "";
-  let llmLabel = "";
-  let llmPlaceholder = "";
+  let llmEnvKey: string;
+  let llmLabel: string;
+  let llmPlaceholder: string;
 
   switch (providerChoice) {
     case "2":

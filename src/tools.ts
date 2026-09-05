@@ -2,7 +2,7 @@ import "dotenv/config";
 import OpenAI from "openai";
 import { BinanceClient } from "./binance-client.js";
 import { TechnicalAnalysis } from "./indicators.js";
-import { RiskGuard, TradeProposal, calculatePosition, calculateExitTargets } from "./risk.js";
+import { RiskGuard, TradeProposal } from "./risk.js";
 import { requireHumanConfirmation } from "./confirmation.js";
 import { BinanceSkillsRunner } from "./skills-runner.js";
 

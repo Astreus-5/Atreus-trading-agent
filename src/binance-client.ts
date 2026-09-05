@@ -898,7 +898,7 @@ export class BinanceClient {
             }
           }
         }
-      } catch {}
+      } catch { /* non-fatal */ }
 
       // Query known traded Spot pairs
       for (const sp of ["BNBUSDT", "SOLUSDT", "ETHUSDT", "BTCUSDT"]) {
@@ -929,7 +929,7 @@ export class BinanceClient {
               }
             }
           }
-        } catch {}
+        } catch { /* non-fatal */ }
       }
     }
 
