@@ -7,12 +7,20 @@ import path from "node:path";
 
 const ENV_PATH = path.resolve(process.cwd(), ".env");
 
+export function isConfiguredContent(content: string): boolean {
+  return (
+    content.includes("BINANCE_SUB_ACCOUNT_API_KEY=") &&
+    !content.includes("BINANCE_SUB_ACCOUNT_API_KEY=your_subaccount_api_key") &&
+    !content.includes("BINANCE_SUB_ACCOUNT_API_KEY=\"your_subaccount_api_key\"") &&
+    !content.includes("BINANCE_SUB_ACCOUNT_API_KEY=''") &&
+    !content.includes("BINANCE_SUB_ACCOUNT_API_KEY=\"\"")
+  );
+}
+
 export function envExists(): boolean {
   if (!fs.existsSync(ENV_PATH)) return false;
   const content = fs.readFileSync(ENV_PATH, "utf-8");
-  // Consider it configured if Binance key is set
-  return content.includes("BINANCE_SUB_ACCOUNT_API_KEY=") &&
-    !content.includes("BINANCE_SUB_ACCOUNT_API_KEY=your_subaccount_api_key");
+  return isConfiguredContent(content);
 }
 
 export async function runSetupWizard(): Promise<void> {
