@@ -180,14 +180,36 @@ export const agentTools: OpenAI.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
-      name: "get_social_sentiment_hype",
-      description: "Binance Skill: Fetches live social buzz, community sentiment, and hype rankings from Binance Web3 Social Intelligence.",
+      name: "list_binance_skills",
+      description: "Binance Skills Hub: Dynamically lists all 19 installed official Binance skills, their descriptions, execution types, and supported commands.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "execute_binance_skill",
+      description: "Binance Skills Hub Universal Executor: Executes ANY of the 19 installed Binance skills dynamically (e.g. meme-rush, query-token-audit, trading-signal, query-address-info, academy-skill, crypto-market-rank, query-token-info, binance-tokenized-securities-info).",
       parameters: {
         type: "object",
         properties: {
-          chainId: { type: "string", description: "Target blockchain ID: '56' (BSC), '8453' (Base), or 'CT_501' (Solana). Default: '56'" },
-          timeRange: { type: "number", description: "Time range (1, 7, or 30 days). Default: 1" },
+          skillName: {
+            type: "string",
+            description: "The name of the skill (e.g. 'meme-rush', 'query-token-audit', 'query-address-info', 'trading-signal', 'crypto-market-rank', 'query-token-info', 'academy-skill')",
+          },
+          command: {
+            type: "string",
+            description: "The subcommand to execute (e.g. 'search', 'audit', 'positions', 'meme-rush', 'social-hype', 'smart-money')",
+          },
+          params: {
+            type: "object",
+            description: "JSON parameters required by the skill command",
+          },
         },
+        required: ["skillName", "command"],
       },
     },
   },
@@ -295,6 +317,12 @@ export async function executeAgentTool(
 
     case "get_social_sentiment_hype":
       return await BinanceSkillsRunner.getSocialHype(args.chainId ?? "56", args.timeRange ?? 1);
+
+    case "list_binance_skills":
+      return BinanceSkillsRunner.listInstalledSkills();
+
+    case "execute_binance_skill":
+      return await BinanceSkillsRunner.executeSkill(args.skillName, args.command, args.params ?? {});
 
     default:
       return { error: `Unknown tool: ${name}` };
