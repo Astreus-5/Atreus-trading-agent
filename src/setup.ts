@@ -141,37 +141,48 @@ export async function runSetupWizard(): Promise<void> {
 
   // ── Step 2: Binance Connection Mode ───────────────────────────────────────
   console.log(chalk.bold.white("\n\n🔑 Step 2 of 3 — Choose your Binance Connection Mode\n"));
-  console.log(chalk.dim("  [ 1 ]  Binance Sub-Account REST API  (Active today — Recommended)"));
-  console.log(chalk.dim("  [ 2 ]  Binance Agent OS MCP Server   (OAuth 2.0 PKCE — Awaiting Binance custom agent whitelist)\n"));
+  console.log(chalk.green("  [ 1 ]  Binance Sub-Account REST API  (Active Today — Live Trading Ready)"));
+  console.log(chalk.yellow("  [ 2 ]  Binance Agent OS MCP Server   (Coming Soon — Awaiting Binance OAuth whitelist)\n"));
 
-  const modeChoice = await ask(chalk.bold.cyan("Your choice (1/2) [default: 1] > "));
+  let modeChoice = await ask(chalk.bold.cyan("Your choice (1/2) [default: 1] > "));
+  if (!modeChoice) modeChoice = "1";
 
   let binanceKey = "";
   let binanceSecret = "";
   let enableMcp = false;
 
   if (modeChoice === "2") {
-    enableMcp = true;
     console.log(
       boxen(
-        `${chalk.bold.green("✓ Binance Agent OS MCP Mode Selected")}\n\n` +
-          `${chalk.white("Atreus will configure for the official Binance Agent OS MCP server.")}\n` +
-          `${chalk.dim("OAuth 2.0 PKCE client & JSON-RPC 2.0 adapter will be activated.")}\n\n` +
-          `${chalk.yellow("Whitelisting Notice:")}\n` +
-          `${chalk.dim("Binance's OAuth server currently requires custom agent whitelisting.")}\n` +
-          `${chalk.cyan("To launch the OAuth login flow:")} Run ${chalk.bold.green("npm start -- --mcp-auth")}\n\n` +
-          `${chalk.green("No Sub-Account API keys required for MCP mode!")}`,
-        { padding: 1, borderStyle: "round", borderColor: "green" }
+        `${chalk.bold.yellow("🚀 Binance Agent OS MCP Mode (Coming Soon)")}\n\n` +
+          `${chalk.white("The full MCP client & RFC 7636 OAuth PKCE adapter are built into Atreus.")}\n` +
+          `${chalk.dim("Binance's Agent OS OAuth server is currently in early developer access and")}\n` +
+          `${chalk.dim("awaiting public custom agent whitelisting.")}\n\n` +
+          `${chalk.cyan("When Binance activates whitelisting:")}\n` +
+          `${chalk.white("Run ")}${chalk.bold.green("npm start -- --mcp-auth")}${chalk.white(" to complete the browser OAuth login flow.")}\n\n` +
+          `${chalk.green("💡 Tip:")} Option 1 (REST API) is live today with real-money trading support.`,
+        { padding: 1, borderStyle: "round", borderColor: "yellow" }
       )
     );
 
-    const addBackup = await ask(chalk.cyan("\nDo you also want to add a Sub-Account REST key as a backup? (y/N) [default: N] > "));
-    if (addBackup.toLowerCase() === "y" || addBackup.toLowerCase() === "yes") {
-      console.log(chalk.dim("\n  Paste your Binance backup keys below (masked with * for security):"));
-      binanceKey = await askSecret("Binance Sub-Account API Key");
-      binanceSecret = await askSecret("Binance Sub-Account Secret");
+    const switchPrompt = await ask(
+      chalk.bold.cyan("\nWould you like to switch to Option 1 (REST) to trade today, or continue with MCP? (1/2) [default: 1] > ")
+    );
+
+    if (!switchPrompt || switchPrompt.trim() === "1") {
+      modeChoice = "1";
+    } else {
+      enableMcp = true;
+      const addBackup = await ask(chalk.cyan("\nDo you also want to add a Sub-Account REST key as a backup? (y/N) [default: N] > "));
+      if (addBackup.toLowerCase() === "y" || addBackup.toLowerCase() === "yes") {
+        console.log(chalk.dim("\n  Paste your Binance backup keys below (masked with * for security):"));
+        binanceKey = await askSecret("Binance Sub-Account API Key");
+        binanceSecret = await askSecret("Binance Sub-Account Secret");
+      }
     }
-  } else {
+  }
+
+  if (modeChoice === "1") {
     // Mode 1: REST API (Default)
     console.log(
       boxen(
