@@ -10,6 +10,8 @@ export interface RiskConfig {
   stopLossPct: number;
   /** Maximum allowable daily drawdown percentage before circuit breaker halts trading. */
   dailyLossLimitPct: number;
+  /** Minimum allowable order value in USD enforced by Binance (default: 5 USD). */
+  minNotionalUsd: number;
 }
 
 /**
@@ -49,6 +51,7 @@ export class RiskGuard {
       maxLeverage: Number(process.env.MAX_LEVERAGE ?? 5),
       stopLossPct: Number(process.env.STOP_LOSS_PCT ?? 2),
       dailyLossLimitPct: Number(process.env.DAILY_LOSS_LIMIT_PCT ?? 10),
+      minNotionalUsd: Number(process.env.MIN_NOTIONAL_USD ?? 5),
       ...config,
     };
   }
@@ -84,6 +87,13 @@ export class RiskGuard {
 
     if (!proposal.quantity || proposal.quantity <= 0) {
       violations.push("❌ Invalid asset quantity.");
+    }
+
+    // 0. Binance Minimum Order Size Check (5 USDT minimum to open positions)
+    if (proposal.side === "BUY" && proposal.notionalUsd < this.config.minNotionalUsd) {
+      violations.push(
+        `❌ Binance enforces a minimum trade value of $${this.config.minNotionalUsd.toFixed(2)} USDT for opening positions. Please increase your order amount or top up your account balance.`
+      );
     }
 
     // 1. Check Position Size
