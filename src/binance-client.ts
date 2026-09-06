@@ -469,7 +469,7 @@ export class BinanceClient {
     const isFutures = params.product === "USDS-M FUTURES";
     const baseUrl = isFutures ? this.futuresBaseUrl : this.spotBaseUrl;
     const endpoint = isFutures ? "/fapi/v1/order" : "/api/v3/order";
-    const timestamp = await this.getSyncTimestamp();
+    const timestamp = await this.getSyncTimestamp(isFutures);
 
     let query = `symbol=${params.symbol.toUpperCase()}&side=${params.side}&type=${params.orderType}`;
 
@@ -517,7 +517,7 @@ export class BinanceClient {
       if (err.includes("-1021") || err.includes("recvWindow")) {
         console.log(chalk.yellow("[Binance Sync] Clock drift detected (-1021). Re-synchronizing exchange time and retrying..."));
         await this.syncServerTime();
-        const retryTs = await this.getSyncTimestamp();
+        const retryTs = await this.getSyncTimestamp(isFutures);
         const baseQuery = query.replace(/&recvWindow=\d+&timestamp=\d+/, "");
         const retryQuery = `${baseQuery}&recvWindow=60000&timestamp=${retryTs}`;
         const retrySig = this.sign(retryQuery);
@@ -798,7 +798,7 @@ export class BinanceClient {
    */
   async getFuturesPositions(symbol?: string): Promise<any[]> {
     if (!this.hasKeys()) return [];
-    const ts = await this.getSyncTimestamp();
+    const ts = await this.getSyncTimestamp(true);
     let query = `recvWindow=60000&timestamp=${ts}`;
     if (symbol) query = `symbol=${symbol.toUpperCase()}&${query}`;
     const sig = this.sign(query);
@@ -969,7 +969,7 @@ export class BinanceClient {
   async setFuturesLeverage(symbol: string, leverage: number): Promise<any> {
     if (!this.hasKeys()) throw new Error("API credentials required to set leverage");
     const roundedLeverage = Math.max(1, Math.min(5, Math.floor(leverage)));
-    const ts = await this.getSyncTimestamp();
+    const ts = await this.getSyncTimestamp(true);
     const query = `symbol=${symbol.toUpperCase()}&leverage=${roundedLeverage}&recvWindow=60000&timestamp=${ts}`;
     const sig = this.sign(query);
 
