@@ -117,35 +117,42 @@ export class BinanceClient {
     return Math.floor(qty * factor) / factor;
   }
 
-  private timeOffset = 0;
+  private spotTimeOffset = 0;
+  private futuresTimeOffset = 0;
   private timeSynced = false;
 
   /**
-   * Synchronizes local clock with Binance atomic server time to eliminate -1021 timestamp errors.
+   * Synchronizes local clock with Binance atomic server time for both Spot and Futures.
    */
   public async syncServerTime(): Promise<number> {
     try {
-      const res = await fetch(`${this.spotBaseUrl}/api/v3/time`);
-      if (res.ok) {
-        const data: any = await res.json();
-        if (data?.serverTime) {
-          this.timeOffset = Number(data.serverTime) - Date.now();
-          this.timeSynced = true;
-          return this.timeOffset;
-        }
+      const [spotRes, futRes] = await Promise.allSettled([
+        fetch(`${this.spotBaseUrl}/api/v3/time`),
+        fetch(`${this.futuresBaseUrl}/fapi/v1/time`),
+      ]);
+      if (spotRes.status === "fulfilled" && spotRes.value.ok) {
+        const d: any = await spotRes.value.json();
+        if (d?.serverTime) this.spotTimeOffset = Number(d.serverTime) - Date.now();
       }
+      if (futRes.status === "fulfilled" && futRes.value.ok) {
+        const d: any = await futRes.value.json();
+        if (d?.serverTime) this.futuresTimeOffset = Number(d.serverTime) - Date.now();
+      }
+      this.timeSynced = true;
+      return this.spotTimeOffset;
     } catch {}
     return 0;
   }
 
   /**
-   * Returns exchange-synchronized timestamp.
+   * Returns exchange-synchronized timestamp for Spot or Futures matching engine.
    */
-  public async getSyncTimestamp(): Promise<number> {
+  public async getSyncTimestamp(isFutures = false): Promise<number> {
     if (!this.timeSynced) {
       await this.syncServerTime();
     }
-    return Date.now() + this.timeOffset;
+    const offset = isFutures ? this.futuresTimeOffset : this.spotTimeOffset;
+    return Date.now() + offset;
   }
 
   /**
@@ -819,15 +826,16 @@ export class BinanceClient {
    */
   async getMyTrades(symbol?: string, limit = 10): Promise<any[]> {
     if (!this.hasKeys()) return [];
-    const ts = await this.getSyncTimestamp();
+    const spotTs = await this.getSyncTimestamp(false);
+    const futTs = await this.getSyncTimestamp(true);
     const results: any[] = [];
 
     if (symbol) {
       const sym = symbol.toUpperCase();
-      const qSpot = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${ts}`;
+      const qSpot = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${spotTs}`;
       const sigSpot = this.sign(qSpot);
 
-      const qFut = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${ts}`;
+      const qFut = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${futTs}`;
       const sigFut = this.sign(qFut);
 
       const [spotRes, futRes] = await Promise.allSettled([
@@ -839,33 +847,24 @@ export class BinanceClient {
         }),
       ]);
 
-      if (spotRes.status === "fulfilled") {
-        if (!spotRes.value.ok) {
-          const errJson: any = await spotRes.value.json().catch(() => ({}));
-          if (spotRes.value.status === 401 || errJson?.code === -2015) {
-            return [{
-              error: `Binance Authentication Error (-2015): ${errJson?.msg || "Invalid API-key, IP, or permissions"}`,
-            }];
-          }
-        } else {
-          const spotTrades = (await spotRes.value.json()) as any[];
-          if (Array.isArray(spotTrades)) {
-            for (const t of spotTrades) {
-              results.push({
-                market: "SPOT",
-                symbol: t.symbol,
-                orderId: t.orderId,
-                tradeId: t.id,
-                side: t.isBuyer ? "BUY" : "SELL",
-                price: t.price,
-                quantity: t.qty,
-                notional: t.quoteQty,
-                commission: t.commission,
-                commissionAsset: t.commissionAsset,
-                isMaker: t.isMaker,
-                time: new Date(t.time).toISOString(),
-              });
-            }
+      if (spotRes.status === "fulfilled" && spotRes.value.ok) {
+        const spotTrades = (await spotRes.value.json()) as any[];
+        if (Array.isArray(spotTrades)) {
+          for (const t of spotTrades) {
+            results.push({
+              market: "SPOT",
+              symbol: t.symbol,
+              orderId: t.orderId,
+              tradeId: t.id,
+              side: t.isBuyer ? "BUY" : "SELL",
+              price: t.price,
+              quantity: t.qty,
+              notional: t.quoteQty,
+              commission: t.commission,
+              commissionAsset: t.commissionAsset,
+              isMaker: t.isMaker,
+              time: new Date(t.time).toISOString(),
+            });
           }
         }
       }
@@ -894,17 +893,13 @@ export class BinanceClient {
       }
     } else {
       // Query recent futures trades across common pairs (Binance requires symbol parameter)
-      for (const futSym of ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"]) {
+      for (const futSym of ["SOLUSDT", "BTCUSDT", "ETHUSDT", "XRPUSDT", "DOGEUSDT"]) {
         try {
-          const qFut = `symbol=${futSym}&limit=${limit}&recvWindow=60000&timestamp=${ts}`;
+          const qFut = `symbol=${futSym}&limit=${limit}&recvWindow=60000&timestamp=${futTs}`;
           const sigFut = this.sign(qFut);
           const futRes = await fetch(`${this.futuresBaseUrl}/fapi/v1/userTrades?${qFut}&signature=${sigFut}`, {
             headers: { "X-MBX-APIKEY": this.apiKey },
           });
-          if (futRes.status === 401) {
-            // Futures trading/reading permissions not enabled on this sub-account key; continue to Spot
-            break;
-          }
           if (futRes.ok) {
             const futTrades = (await futRes.json()) as any[];
             if (Array.isArray(futTrades)) {
@@ -933,7 +928,7 @@ export class BinanceClient {
       // Query known traded Spot pairs
       for (const sp of ["BNBUSDT", "SOLUSDT", "ETHUSDT", "BTCUSDT"]) {
         try {
-          const qSpot = `symbol=${sp}&limit=5&recvWindow=60000&timestamp=${ts}`;
+          const qSpot = `symbol=${sp}&limit=5&recvWindow=60000&timestamp=${spotTs}`;
           const sigSpot = this.sign(qSpot);
           const sRes = await fetch(`${this.spotBaseUrl}/api/v3/myTrades?${qSpot}&signature=${sigSpot}`, {
             headers: { "X-MBX-APIKEY": this.apiKey },
