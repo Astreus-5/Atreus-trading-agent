@@ -67,6 +67,12 @@ export function formatTerminalResponse(markdown: string): string {
       continue;
     }
 
+    if (/^#{4,}\s+(.+)$/.test(line)) {
+      const title = line.replace(/^#{4,}\s+/, "").trim();
+      formattedLines.push("\n" + chalk.bold.white("  ◆ " + formatInline(title)));
+      continue;
+    }
+
     // Alerts and Callouts (> [!WARNING], > [!NOTE], etc.)
     if (/^>\s*\[!(WARNING|CAUTION|ERROR)\]/i.test(line)) {
       formattedLines.push("\n  " + chalk.bold.bgRed.white(" ⚠️ ACTION REQUIRED "));
@@ -156,12 +162,12 @@ function colorizeValue(val: string): string {
   let formatted = val.replace(/\((available|locked|free|total)\)/gi, (_, word) => chalk.dim(`(${word})`));
 
   // Currency & numbers highlight: e.g. 7.9264 USDT -> green amount, cyan currency
-  formatted = formatted.replace(/\b(\d+(?:\.\d+)?)\s*(USDT|BNB|BTC|ETH|SOL|USD)?\b/gi, (match, amt, cur) => {
-    if (cur) {
-      return chalk.bold.green(amt) + " " + chalk.cyan(cur.toUpperCase());
-    }
-    return chalk.bold.green(amt);
+  formatted = formatted.replace(/\b(\d+(?:\.\d+)?)\s+(USDT|BNB|BTC|ETH|SOL|USD)\b/gi, (_, amt, cur) => {
+    return chalk.bold.green(amt) + " " + chalk.cyan(cur.toUpperCase());
   });
+
+  // Highlight dollar amounts: $103.36 -> $ in cyan, digits in green
+  formatted = formatted.replace(/\$([0-9,]+(?:\.[0-9]+)?)/g, (_, amt) => chalk.cyan("$") + chalk.bold.green(amt));
 
   return formatted;
 }
