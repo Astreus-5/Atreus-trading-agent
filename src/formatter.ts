@@ -161,10 +161,17 @@ function colorizeValue(val: string): string {
   // Dim helper words like "(available)"
   let formatted = val.replace(/\((available|locked|free|total)\)/gi, (_, word) => chalk.dim(`(${word})`));
 
-  // Currency & numbers highlight: e.g. 7.9264 USDT -> green amount, cyan currency
-  formatted = formatted.replace(/\b(\d+(?:\.\d+)?)\s+(USDT|BNB|BTC|ETH|SOL|USD)\b/gi, (_, amt, cur) => {
-    return chalk.bold.green(amt) + " " + chalk.cyan(cur.toUpperCase());
-  });
+  // Currency & numbers highlight: match any cryptocurrency or asset ticker (e.g. 10 DOGE, 500 XRP, 1000 PEPE, 2 AVAX)
+  formatted = formatted.replace(
+    /\b(\d+(?:\.\d+)?)\s+([A-Z]{2,10})\b/g,
+    (match, amt, cur) => {
+      // Exclude common non-token uppercase words
+      if (/^(AM|PM|MIN|SEC|DAY|DAYS|HR|HRS|UTC|EST|PST|GTC|IOC|FOK)$/i.test(cur)) {
+        return match;
+      }
+      return chalk.bold.green(amt) + " " + chalk.cyan(cur.toUpperCase());
+    }
+  );
 
   // Highlight dollar amounts: $103.36 -> $ in cyan, digits in green
   formatted = formatted.replace(/\$([0-9,]+(?:\.[0-9]+)?)/g, (_, amt) => chalk.cyan("$") + chalk.bold.green(amt));

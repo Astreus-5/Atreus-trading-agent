@@ -892,10 +892,24 @@ export class BinanceClient {
         }
       }
     } else {
-      // Query recent futures trades across common pairs (Binance requires symbol parameter)
-      for (const futSym of ["SOLUSDT", "BTCUSDT", "ETHUSDT", "XRPUSDT", "DOGEUSDT"]) {
+      // Dynamically discover candidate pairs from active account holdings + major pairs
+      const candidateSymbols = new Set<string>([
+        "SOLUSDT", "BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"
+      ]);
+      try {
+        const bal = await this.getAccountBalances();
+        for (const b of (bal.spotBalances || [])) {
+          if (b.asset && b.asset !== "USDT") candidateSymbols.add(`${b.asset}USDT`);
+        }
+        for (const b of (bal.futuresBalances || [])) {
+          if (b.asset && b.asset !== "USDT") candidateSymbols.add(`${b.asset}USDT`);
+        }
+      } catch { /* non-fatal */ }
+
+      for (const sym of candidateSymbols) {
+        // Query USDS-M Futures trades
         try {
-          const qFut = `symbol=${futSym}&limit=${limit}&recvWindow=60000&timestamp=${futTs}`;
+          const qFut = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${futTs}`;
           const sigFut = this.sign(qFut);
           const futRes = await fetch(`${this.futuresBaseUrl}/fapi/v1/userTrades?${qFut}&signature=${sigFut}`, {
             headers: { "X-MBX-APIKEY": this.apiKey },
@@ -923,12 +937,10 @@ export class BinanceClient {
             }
           }
         } catch { /* non-fatal */ }
-      }
 
-      // Query known traded Spot pairs
-      for (const sp of ["BNBUSDT", "SOLUSDT", "ETHUSDT", "BTCUSDT"]) {
+        // Query Spot trades
         try {
-          const qSpot = `symbol=${sp}&limit=5&recvWindow=60000&timestamp=${spotTs}`;
+          const qSpot = `symbol=${sym}&limit=5&recvWindow=60000&timestamp=${spotTs}`;
           const sigSpot = this.sign(qSpot);
           const sRes = await fetch(`${this.spotBaseUrl}/api/v3/myTrades?${qSpot}&signature=${sigSpot}`, {
             headers: { "X-MBX-APIKEY": this.apiKey },
