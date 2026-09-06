@@ -67,10 +67,22 @@ export function formatTerminalResponse(markdown: string): string {
       continue;
     }
 
-    // Callouts / Blockquotes (> or Note:)
-    if (line.trim().startsWith(">") || /^\s*\(?(Note|Warning|Important):/i.test(line)) {
+    // Alerts and Callouts (> [!WARNING], > [!NOTE], etc.)
+    if (/^>\s*\[!(WARNING|CAUTION|ERROR)\]/i.test(line)) {
+      formattedLines.push("\n  " + chalk.bold.bgRed.white(" ⚠️ ACTION REQUIRED "));
+      continue;
+    }
+    if (/^>\s*\[!(NOTE|TIP|IMPORTANT)\]/i.test(line)) {
+      formattedLines.push("\n  " + chalk.bold.bgCyan.black(" ℹ SYSTEM NOTICE "));
+      continue;
+    }
+
+    if (line.trim().startsWith(">") || /^\s*\(?(Note|Warning|Important|Advisory):/i.test(line)) {
       const cleanNote = line.replace(/^>\s*/, "").trim();
-      formattedLines.push("  " + chalk.dim("│ ") + chalk.yellow(formatInline(cleanNote)));
+      const isAlert = /warning|caution|error|danger|rejected|failed|invalid/i.test(cleanNote);
+      const barColor = isAlert ? chalk.bold.red("│ ") : chalk.bold.yellow("│ ");
+      const textColor = isAlert ? chalk.bold.redBright(formatInline(cleanNote)) : chalk.yellow(formatInline(cleanNote));
+      formattedLines.push("  " + barColor + textColor);
       continue;
     }
 
@@ -133,8 +145,8 @@ function colorizeValue(val: string): string {
   if (/^(SUCCESS|FILLED|NEW|COMPLETED|CONFIRMED|BUY|LONG)/i.test(val)) {
     return chalk.bold.green(val);
   }
-  if (/^(REJECTED|FAILED|CANCELLED|CANCEL|SELL|SHORT)/i.test(val)) {
-    return chalk.bold.red(val);
+  if (/^(REJECTED|FAILED|CANCELLED|CANCEL|SELL|SHORT|AUTHENTICATION_FAILED|UNAUTHORIZED|ERROR)/i.test(val)) {
+    return chalk.bold.redBright(val);
   }
   if (/^(PENDING|WAITING|NEUTRAL)/i.test(val)) {
     return chalk.bold.yellow(val);

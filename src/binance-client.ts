@@ -431,7 +431,7 @@ export class BinanceClient {
     if (result.authError) {
       result.error = `Binance Authentication / Permission Error (${result.errorCode}): ${result.authError}`;
       result.help = `Your Binance API key was rejected by Binance. Common causes:
-1) IP Restriction: Binance is receiving requests from IP 197.211.52.189. In your Binance API Key settings, either add 197.211.52.189 to your trusted IP list or set IP access to 'Unrestricted'.
+1) IP Restriction: In your Binance API Key settings, either add your current public IP (shown in the error message above) to your trusted IP list or set IP access to 'Unrestricted'.
 2) API Key Expired or Revoked: Check Binance API Management or create a fresh API key and update .env.
 3) Permissions: Ensure 'Enable Reading' and trading permissions are enabled on this API key.`;
     }
@@ -845,7 +845,6 @@ export class BinanceClient {
           if (spotRes.value.status === 401 || errJson?.code === -2015) {
             return [{
               error: `Binance Authentication Error (-2015): ${errJson?.msg || "Invalid API-key, IP, or permissions"}`,
-              requestIp: "197.211.52.189",
             }];
           }
         } else {
@@ -906,7 +905,6 @@ export class BinanceClient {
             const errJson: any = await futRes.json().catch(() => ({}));
             return [{
               error: `Binance Authentication Error (-2015): ${errJson?.msg || "Invalid API-key, IP, or permissions"}`,
-              requestIp: "197.211.52.189",
             }];
           }
           if (futRes.ok) {
