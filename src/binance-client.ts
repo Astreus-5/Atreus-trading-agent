@@ -819,12 +819,12 @@ export class BinanceClient {
    */
   async getMyTrades(symbol?: string, limit = 10): Promise<any[]> {
     if (!this.hasKeys()) return [];
-    const ts = Date.now();
+    const ts = await this.getSyncTimestamp();
     const results: any[] = [];
 
     if (symbol) {
       const sym = symbol.toUpperCase();
-      const qSpot = `symbol=${sym}&limit=${limit}&timestamp=${ts}`;
+      const qSpot = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${ts}`;
       const sigSpot = this.sign(qSpot);
 
       const qFut = `symbol=${sym}&limit=${limit}&recvWindow=60000&timestamp=${ts}`;
@@ -902,10 +902,8 @@ export class BinanceClient {
             headers: { "X-MBX-APIKEY": this.apiKey },
           });
           if (futRes.status === 401) {
-            const errJson: any = await futRes.json().catch(() => ({}));
-            return [{
-              error: `Binance Authentication Error (-2015): ${errJson?.msg || "Invalid API-key, IP, or permissions"}`,
-            }];
+            // Futures trading/reading permissions not enabled on this sub-account key; continue to Spot
+            break;
           }
           if (futRes.ok) {
             const futTrades = (await futRes.json()) as any[];
@@ -935,7 +933,7 @@ export class BinanceClient {
       // Query known traded Spot pairs
       for (const sp of ["BNBUSDT", "SOLUSDT", "ETHUSDT", "BTCUSDT"]) {
         try {
-          const qSpot = `symbol=${sp}&limit=5&timestamp=${Date.now()}`;
+          const qSpot = `symbol=${sp}&limit=5&recvWindow=60000&timestamp=${ts}`;
           const sigSpot = this.sign(qSpot);
           const sRes = await fetch(`${this.spotBaseUrl}/api/v3/myTrades?${qSpot}&signature=${sigSpot}`, {
             headers: { "X-MBX-APIKEY": this.apiKey },
