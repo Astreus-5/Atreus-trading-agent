@@ -340,6 +340,13 @@ export class BinanceClient {
               category: isEarn ? "Simple Earn (Flexible Savings)" : "Spot Available",
             };
           });
+      } else {
+        const errJson: any = await res.json().catch(() => ({}));
+        if (res.status === 401 || errJson?.code === -2015) {
+          result.status = "AUTHENTICATION_FAILED";
+          result.authError = errJson?.msg || "Invalid API-key, IP, or permissions for action.";
+          result.errorCode = errJson?.code || -2015;
+        }
       }
     } catch (err: any) {
       console.warn("Notice: Spot balance fetch skipped:", err.message);
@@ -419,6 +426,14 @@ export class BinanceClient {
 
     if (result.subAccounts.length > 0) {
       result.environment = "Master Account (With Sub-Accounts)";
+    }
+
+    if (result.authError) {
+      result.error = `Binance Authentication / Permission Error (${result.errorCode}): ${result.authError}`;
+      result.help = `Your Binance API key was rejected by Binance. Common causes:
+1) IP Restriction: Binance is receiving requests from IP 197.211.52.189. In your Binance API Key settings, either add 197.211.52.189 to your trusted IP list or set IP access to 'Unrestricted'.
+2) API Key Expired or Revoked: Check Binance API Management or create a fresh API key and update .env.
+3) Permissions: Ensure 'Enable Reading' and trading permissions are enabled on this API key.`;
     }
 
     return result;
@@ -824,24 +839,34 @@ export class BinanceClient {
         }),
       ]);
 
-      if (spotRes.status === "fulfilled" && spotRes.value.ok) {
-        const spotTrades = (await spotRes.value.json()) as any[];
-        if (Array.isArray(spotTrades)) {
-          for (const t of spotTrades) {
-            results.push({
-              market: "SPOT",
-              symbol: t.symbol,
-              orderId: t.orderId,
-              tradeId: t.id,
-              side: t.isBuyer ? "BUY" : "SELL",
-              price: t.price,
-              quantity: t.qty,
-              notional: t.quoteQty,
-              commission: t.commission,
-              commissionAsset: t.commissionAsset,
-              isMaker: t.isMaker,
-              time: new Date(t.time).toISOString(),
-            });
+      if (spotRes.status === "fulfilled") {
+        if (!spotRes.value.ok) {
+          const errJson: any = await spotRes.value.json().catch(() => ({}));
+          if (spotRes.value.status === 401 || errJson?.code === -2015) {
+            return [{
+              error: `Binance Authentication Error (-2015): ${errJson?.msg || "Invalid API-key, IP, or permissions"}`,
+              requestIp: "197.211.52.189",
+            }];
+          }
+        } else {
+          const spotTrades = (await spotRes.value.json()) as any[];
+          if (Array.isArray(spotTrades)) {
+            for (const t of spotTrades) {
+              results.push({
+                market: "SPOT",
+                symbol: t.symbol,
+                orderId: t.orderId,
+                tradeId: t.id,
+                side: t.isBuyer ? "BUY" : "SELL",
+                price: t.price,
+                quantity: t.qty,
+                notional: t.quoteQty,
+                commission: t.commission,
+                commissionAsset: t.commissionAsset,
+                isMaker: t.isMaker,
+                time: new Date(t.time).toISOString(),
+              });
+            }
           }
         }
       }
@@ -869,36 +894,45 @@ export class BinanceClient {
         }
       }
     } else {
-      // Query all recent futures trades across all pairs
-      try {
-        const qFut = `limit=${limit}&recvWindow=60000&timestamp=${ts}`;
-        const sigFut = this.sign(qFut);
-        const futRes = await fetch(`${this.futuresBaseUrl}/fapi/v1/userTrades?${qFut}&signature=${sigFut}`, {
-          headers: { "X-MBX-APIKEY": this.apiKey },
-        });
-        if (futRes.ok) {
-          const futTrades = (await futRes.json()) as any[];
-          if (Array.isArray(futTrades)) {
-            for (const t of futTrades) {
-              results.push({
-                market: "USDS-M FUTURES",
-                symbol: t.symbol,
-                orderId: t.orderId,
-                tradeId: t.id,
-                side: t.side,
-                price: t.price,
-                quantity: t.qty,
-                notional: t.quoteQty,
-                realizedPnl: t.realizedPnl,
-                commission: t.commission,
-                commissionAsset: t.commissionAsset,
-                isMaker: t.maker,
-                time: new Date(t.time).toISOString(),
-              });
+      // Query recent futures trades across common pairs (Binance requires symbol parameter)
+      for (const futSym of ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"]) {
+        try {
+          const qFut = `symbol=${futSym}&limit=${limit}&recvWindow=60000&timestamp=${ts}`;
+          const sigFut = this.sign(qFut);
+          const futRes = await fetch(`${this.futuresBaseUrl}/fapi/v1/userTrades?${qFut}&signature=${sigFut}`, {
+            headers: { "X-MBX-APIKEY": this.apiKey },
+          });
+          if (futRes.status === 401) {
+            const errJson: any = await futRes.json().catch(() => ({}));
+            return [{
+              error: `Binance Authentication Error (-2015): ${errJson?.msg || "Invalid API-key, IP, or permissions"}`,
+              requestIp: "197.211.52.189",
+            }];
+          }
+          if (futRes.ok) {
+            const futTrades = (await futRes.json()) as any[];
+            if (Array.isArray(futTrades)) {
+              for (const t of futTrades) {
+                results.push({
+                  market: "USDS-M FUTURES",
+                  symbol: t.symbol,
+                  orderId: t.orderId,
+                  tradeId: t.id,
+                  side: t.side,
+                  price: t.price,
+                  quantity: t.qty,
+                  notional: t.quoteQty,
+                  realizedPnl: t.realizedPnl,
+                  commission: t.commission,
+                  commissionAsset: t.commissionAsset,
+                  isMaker: t.maker,
+                  time: new Date(t.time).toISOString(),
+                });
+              }
             }
           }
-        }
-      } catch { /* non-fatal */ }
+        } catch { /* non-fatal */ }
+      }
 
       // Query known traded Spot pairs
       for (const sp of ["BNBUSDT", "SOLUSDT", "ETHUSDT", "BTCUSDT"]) {
